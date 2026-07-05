@@ -27,6 +27,7 @@
     "MixinClientPlayerInteractionManager",
     "MixinClientWorld",
     "MixinDrawContext",
+    "MixinDrawContextTextAlpha",
     "MixinEntity",
     "MixinEntityRenderer",
     "MixinFlowableFluid",

@@ -22,6 +22,7 @@ import net.minecraft.client.Keyboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.util.InputUtil;
 
 @Mixin(Keyboard.class)
 public class MixinKeyboard {
@@ -46,6 +47,13 @@ public class MixinKeyboard {
 
 	@Inject(method = "onKey", at = @At("HEAD"), cancellable = true)
 	private void onKeyEvent_1(long windowPointer, int action, KeyInput input, CallbackInfo callbackInfo) {
+		// Module keybinds (handleKey) and the quick-prefix chat trigger must only fire once per actual
+		// press - @At("HEAD") means this now runs for press/release/repeat alike, unlike the old
+		// isKeyPressed-ordinal anchor point which happened to only ever run within a press-gated block.
+		if (action != InputUtil.GLFW_PRESS) {
+			return;
+		}
+
 		if (Option.CHAT_QUICK_PREFIX.getValue() && Command.getPrefix().length() == 1 && input.key() == Command.getPrefix().charAt(0)) {
 			MinecraftClient.getInstance().setScreen(new ChatScreen(Command.getPrefix(), false));
 		}

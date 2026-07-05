@@ -314,7 +314,8 @@ public class Nametags extends Module {
 				if (uuidCache.containsKey(ownerUUID)) {
 					lines.add(0, Text.literal("Owner: " + uuidCache.get(ownerUUID)).formatted(Formatting.GREEN));
 				} else if (failedUUIDs.contains(ownerUUID)) {
-					lines.add(0, Text.literal("Owner: " + Formatting.GRAY + "Invalid UUID!").formatted(Formatting.GREEN));
+					lines.add(0, Text.literal("Owner: ").formatted(Formatting.GREEN)
+							.append(Text.literal("Invalid UUID!").formatted(Formatting.GRAY)));
 				} else {
 					// Try to see if the owner is online on the server before calling the mojang api
 					Optional<GameProfile> owner = mc.player.networkHandler.getPlayerList().stream()
@@ -328,16 +329,17 @@ public class Nametags extends Module {
 						uuidQueue.add(ownerUUID);
 					}
 
-					lines.add(0, Text.literal("Owner: " + Formatting.GRAY + "Loading...").formatted(Formatting.GREEN));
+					lines.add(0, Text.literal("Owner: ").formatted(Formatting.GREEN)
+							.append(Text.literal("Loading...").formatted(Formatting.GRAY)));
 				}
 			}
 
 			if (getSetting(2).asToggle().getChild(6).asToggle().getState() && animal instanceof AbstractHorseEntity) {
 				AbstractHorseEntity he = (AbstractHorseEntity) animal;
 
-				lines.add(0, Text.literal(
-						CmdEntityStats.getSpeed(he) + " m/s" + Formatting.GRAY + " | " + Formatting.RESET + CmdEntityStats.getJumpHeight(he) + " Jump")
-						.formatted(Formatting.GREEN));
+				lines.add(0, Text.literal(CmdEntityStats.getSpeed(he) + " m/s").formatted(Formatting.GREEN)
+						.append(Text.literal(" | ").formatted(Formatting.GRAY))
+						.append(Text.literal(CmdEntityStats.getJumpHeight(he) + " Jump").formatted(Formatting.GREEN)));
 			}
 		}
 		
@@ -393,7 +395,8 @@ public class Nametags extends Module {
 					.append(Text.literal("\"").formatted(Formatting.GOLD)));
 		}
 
-		lines.add(((MutableText) item.getName()).formatted(Formatting.GOLD).append(getSetting(4).asToggle().getChild(2).asToggle().getState() ? Formatting.YELLOW + " [x" + item.getStack().getCount() + "]" : ""));
+		lines.add(((MutableText) item.getName()).formatted(Formatting.GOLD).append(getSetting(4).asToggle().getChild(2).asToggle().getState()
+				? Text.literal(" [x" + item.getStack().getCount() + "]").formatted(Formatting.YELLOW) : Text.empty()));
 
 		return lines;
 	}
@@ -404,26 +407,25 @@ public class Nametags extends Module {
 		if (getSetting(0).asMode().getMode() == 0) {
 			return Text.literal(Integer.toString(totalHealth)).styled(s -> s.withColor(getHealthColor(e)));
 		} else if (getSetting(0).asMode().getMode() == 1) {
-			return Text.literal(Integer.toString(totalHealth) + Formatting.GREEN + "/" + (int) e.getMaxHealth()).styled(s -> s.withColor(getHealthColor(e)));
+			return Text.literal(Integer.toString(totalHealth) + "/" + (int) e.getMaxHealth()).styled(s -> s.withColor(getHealthColor(e)));
 		} else if (getSetting(0).asMode().getMode() == 2) {
-			// Health bar
-			String health = "";
-
-			// - Add Green Normal Health
-			health += Formatting.GREEN + StringUtils.repeat('|', (int) e.getHealth());
+			// Health bar - built as a proper Text tree (rather than concatenating raw Formatting
+			// codes into one literal string) since the world-space text renderer doesn't parse
+			// embedded section-sign codes in plain string content, only explicit component styling.
+			MutableText health = Text.literal(StringUtils.repeat('|', (int) e.getHealth())).formatted(Formatting.GREEN);
 
 			// - Add Yellow Absorption Health
-			health += Formatting.YELLOW + StringUtils.repeat('|', (int) Math.min(e.getAbsorptionAmount(), e.getMaxHealth() - e.getHealth()));
+			health.append(Text.literal(StringUtils.repeat('|', (int) Math.min(e.getAbsorptionAmount(), e.getMaxHealth() - e.getHealth()))).formatted(Formatting.YELLOW));
 
 			// - Add Red Empty Health (Remove Based on absorption amount)
-			health += Formatting.RED + StringUtils.repeat('|', (int) e.getMaxHealth() - totalHealth);
+			health.append(Text.literal(StringUtils.repeat('|', (int) e.getMaxHealth() - totalHealth)).formatted(Formatting.RED));
 
 			// - Add "+??" to the end if the entity has extra hearts
 			if (totalHealth > (int) e.getMaxHealth()) {
-				health += Formatting.YELLOW + " +" + (totalHealth - (int) e.getMaxHealth());
+				health.append(Text.literal(" +" + (totalHealth - (int) e.getMaxHealth())).formatted(Formatting.YELLOW));
 			}
 
-			return Text.literal(health);
+			return health;
 		} else {
 			return Text.literal((int) (totalHealth / e.getMaxHealth() * 100) + "%").styled(s -> s.withColor(getHealthColor(e)));
 		}

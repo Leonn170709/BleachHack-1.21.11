@@ -20,6 +20,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gl.UniformType;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayer;
@@ -42,9 +43,17 @@ public class Renderer {
 	// draw call - that method no longer exists (depth-test is baked into the RenderPipeline). These are
 	// NO_DEPTH_TEST variants of vanilla's own debug-fill/lines pipelines, reusing their exact GLSL/
 	// uniform declarations (position_color / rendertype_lines) so only the depth test differs.
+	//
+	// NO_DEPTH_FILL must declare the DynamicTransforms/Projection uniforms itself (matching vanilla's
+	// private TRANSFORMS_AND_PROJECTION_SNIPPET, which DEBUG_FILLED_BOX/DEBUG_QUADS are built from) -
+	// without them the vertex shader never gets a transform/projection matrix bound and silently draws
+	// nothing, which is why this was invisible while the NO_DEPTH_LINES sibling (built from the
+	// already-widened RENDERTYPE_LINES_SNIPPET, which already includes them) worked fine.
 	private static final RenderLayer NO_DEPTH_FILL = RenderLayer.of("bleachhack_no_depth_fill",
 			RenderSetup.builder(RenderPipeline.builder()
 					.withLocation(Identifier.of("bleachhack", "pipeline/no_depth_fill"))
+					.withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
+					.withUniform("Projection", UniformType.UNIFORM_BUFFER)
 					.withVertexShader(Identifier.of("minecraft", "core/position_color"))
 					.withFragmentShader(Identifier.of("minecraft", "core/position_color"))
 					.withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS)

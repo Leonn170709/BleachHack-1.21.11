@@ -14,6 +14,8 @@ import java.util.function.Supplier;
 
 import org.apache.logging.log4j.util.TriConsumer;
 
+import org.lwjgl.glfw.GLFW;
+
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.client.font.TextRenderer;
@@ -67,6 +69,19 @@ public class UIWindow extends ClickGuiWindow {
 	}
 
 	public void render(DrawContext matrices, int mouseX, int mouseY) {
+		// Long-standing bug (present since 1.19.4, not a port regression): dragging one of these
+		// windows and releasing the mouse sometimes leaves it glued to the cursor forever, because
+		// this window's drag-follow logic below re-derives x1/y1 (and re-saves them as a new
+		// percentage-based Position) from the live mouse position every frame while dragging==true,
+		// with nothing else ever reading it back to notice the button was actually released. The
+		// plain ModuleWindow drag path doesn't have this self-perpetuating loop, which is why only
+		// this "UI positioning" window type ever gets stuck. Rather than rely solely on
+		// mouseReleased() (which should already clear dragging, but evidently doesn't always land),
+		// double check the real GLFW button state here and self-heal if it's already up.
+		if (dragging && GLFW.glfwGetMouseButton(mc.getWindow().getHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_RELEASE) {
+			dragging = false;
+		}
+
 		// Handling of attaching/detaching when dragging
 		int sens = 5;
 		if (dragging) {

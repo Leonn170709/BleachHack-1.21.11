@@ -144,7 +144,8 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 		}
 
 		public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
-			renderBackground(matrices, mouseX, mouseY, delta);
+			// Screen.renderWithTooltip() now calls renderBackground() once itself before render() runs
+			// (1.21.11) - calling it again here throws "Can only blur once per frame".
 			super.render(matrices, mouseX, mouseY, delta);
 		}
 

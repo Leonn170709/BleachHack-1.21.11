@@ -80,7 +80,8 @@ public class ProtocolScreen extends Screen {
 	}
 
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-		renderBackground(context, mouseX, mouseY, delta);
+		// Screen.renderWithTooltip() now calls renderBackground() once itself before render() runs
+		// (1.21.11) - calling it again here throws "Can only blur once per frame".
 		context.drawCenteredTextWithShadow(textRenderer, "NOTE: This will not make the game compatible with other versions", width / 2, 5, 0xaaaaaa);
 		context.drawCenteredTextWithShadow(textRenderer, "It will only change what the client says it is to servers.", width / 2, 15, 0xaaaaaa);
 

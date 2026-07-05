@@ -145,8 +145,8 @@ public class BleachTitleScreen extends WindowScreen {
 
 	@Override
 	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
-		this.renderBackground(matrices, mouseX, mouseY, delta);
-
+		// Screen.renderWithTooltip() now calls renderBackground() once itself before render() runs
+		// (1.21.11) - calling it again here throws "Can only blur once per frame".
 		int copyWidth = this.textRenderer.getWidth("Copyright Mojang AB. Do not distribute!") + 2;
 		matrices.drawTextWithShadow(textRenderer, "Copyright Mojang AB. Do not distribute!", width - copyWidth, height - 10, -1);
 		matrices.drawTextWithShadow(textRenderer, "Fabric: " + FabricLoader.getInstance().getModContainer("fabricloader").get().getMetadata().getVersion().getFriendlyString(),

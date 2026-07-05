@@ -171,8 +171,8 @@ public class UpdateScreen extends WindowScreen {
 
 	@Override
 	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
-		this.renderBackground(matrices, mouseX, mouseY, delta);
-
+		// Screen.renderWithTooltip() now calls renderBackground() once itself before render() runs
+		// (1.21.11) - calling it again here throws "Can only blur once per frame".
 		int offset = scrollbar.getOffsetSinceRender();
 		int wh = getWindow(0).y2 - getWindow(0).y1;
 		for (WindowWidget widget: changelogWidgets) {
