@@ -20,14 +20,14 @@ public class PlayerInteractEntityC2SUtils {
 
 	public static Entity getEntity(PlayerInteractEntityC2SPacket packet) {
 		PacketByteBuf packetBuf = new PacketByteBuf(Unpooled.buffer());
-		packet.write(packetBuf);
+		PlayerInteractEntityC2SPacket.CODEC.encode(packetBuf, packet);
 
 		return MinecraftClient.getInstance().world.getEntityById(packetBuf.readVarInt());
 	}
 	
 	public static InteractType getInteractType(PlayerInteractEntityC2SPacket packet) {
 		PacketByteBuf packetBuf = new PacketByteBuf(Unpooled.buffer());
-		packet.write(packetBuf);
+		PlayerInteractEntityC2SPacket.CODEC.encode(packetBuf, packet);
 
 		packetBuf.readVarInt();
 		return packetBuf.readEnumConstant(InteractType.class);

@@ -16,9 +16,13 @@ import org.bleachhack.setting.module.SettingSlider;
 import org.bleachhack.setting.module.SettingToggle;
 import org.bleachhack.util.InventoryUtils;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ConsumableComponent;
+import net.minecraft.component.type.FoodComponent;
+import net.minecraft.component.type.FoodComponents;
 import net.minecraft.entity.effect.StatusEffectCategory;
-import net.minecraft.item.FoodComponent;
-import net.minecraft.item.FoodComponents;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.consume.ApplyEffectsConsumeEffect;
 import net.minecraft.util.Hand;
 
 public class AutoEat extends Module {
@@ -67,18 +71,19 @@ public class AutoEat extends Module {
 		int slot = -1;
 		int hunger = -1;
 		for (int s: InventoryUtils.getInventorySlots(true)) {
-			FoodComponent food = mc.player.getInventory().getStack(s).getItem().getFoodComponent();
+			ItemStack stack = mc.player.getInventory().getStack(s);
+			FoodComponent food = stack.get(DataComponentTypes.FOOD);
 
 			if (food == null)
 				continue;
 
 			int h = preferGapples && (food == FoodComponents.GOLDEN_APPLE || food == FoodComponents.ENCHANTED_GOLDEN_APPLE)
-					? Integer.MAX_VALUE : food.getHunger();
+					? Integer.MAX_VALUE : food.nutrition();
 
 			if (h <= hunger
 					|| (!gapples && (food == FoodComponents.GOLDEN_APPLE || food == FoodComponents.ENCHANTED_GOLDEN_APPLE))
 					|| (!chorus && food == FoodComponents.CHORUS_FRUIT)
-					|| (!poison && isPoisonous(food)))
+					|| (!poison && isPoisonous(stack)))
 				continue;
 
 			slot = s;
@@ -86,7 +91,7 @@ public class AutoEat extends Module {
 		}
 
 		if (hunger != -1) {
-			if (slot == mc.player.getInventory().selectedSlot || slot == 40) {
+			if (slot == mc.player.getInventory().getSelectedSlot() || slot == 40) {
 				mc.options.useKey.setPressed(true);
 				mc.interactionManager.interactItem(mc.player, slot == 40 ? Hand.OFF_HAND : Hand.MAIN_HAND);
 				eating = true;
@@ -96,7 +101,12 @@ public class AutoEat extends Module {
 		}
 	}
 
-	private boolean isPoisonous(FoodComponent food) {
-		return food.getStatusEffects().stream().anyMatch(e -> e.getFirst().getEffectType().getCategory() == StatusEffectCategory.HARMFUL);
+	private boolean isPoisonous(ItemStack stack) {
+		ConsumableComponent consumable = stack.get(DataComponentTypes.CONSUMABLE);
+
+		return consumable != null && consumable.onConsumeEffects().stream()
+				.filter(e -> e instanceof ApplyEffectsConsumeEffect)
+				.flatMap(e -> ((ApplyEffectsConsumeEffect) e).effects().stream())
+				.anyMatch(e -> e.getEffectType().value().getCategory() == StatusEffectCategory.HARMFUL);
 	}
 }

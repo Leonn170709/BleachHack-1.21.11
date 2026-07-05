@@ -14,7 +14,6 @@ import org.bleachhack.setting.option.Option;
 import org.lwjgl.glfw.GLFW;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -80,9 +79,6 @@ public class CommandSuggestor {
 			}
 
 			if (!suggestions.isEmpty()) {
-				event.getMatrix().push();
-				event.getMatrix().translate(0, 0, 200);
-
 				int length = suggestions.stream()
 						.map(s -> MinecraftClient.getInstance().textRenderer.getWidth(s))
 						.min(Comparator.reverseOrder()).orElse(0);
@@ -93,14 +89,12 @@ public class CommandSuggestor {
 				for (int i = scroll; i < suggestions.size() && i < scroll + 10; i++) {
 					String suggestion = suggestions.get(i);
 
-					DrawableHelper.fill(event.getMatrix(), startX, startY, startX + length + 2, startY + 12, 0xd0000000);
-					MinecraftClient.getInstance().textRenderer.drawWithShadow(
-							event.getMatrix(), suggestion, startX + 1, startY + 2, i == selected ? 0xffff00: 0xb0b0b0);
+					event.getMatrix().fill(startX, startY, startX + length + 2, startY + 12, 0xd0000000);
+					event.getMatrix().drawTextWithShadow(MinecraftClient.getInstance().textRenderer,
+							suggestion, startX + 1, startY + 2, i == selected ? 0xffff00: 0xb0b0b0);
 
 					startY += 12;
 				}
-
-				event.getMatrix().pop();
 			}
 		}
 	}

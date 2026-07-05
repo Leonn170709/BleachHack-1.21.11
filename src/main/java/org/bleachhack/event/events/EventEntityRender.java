@@ -10,7 +10,7 @@ package org.bleachhack.event.events;
 
 import org.bleachhack.event.Event;
 
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 
@@ -35,13 +35,15 @@ public class EventEntityRender extends Event {
 			}
 		}
 
-		// Label rendering (nametags) still gets a MatrixStack/VertexConsumerProvider directly.
+		// Label rendering (nametags) still gets a MatrixStack, but the VertexConsumerProvider was
+		// replaced by an OrderedRenderCommandQueue (submit-based batching instead of direct vertex
+		// buffers) - and the label Text itself is no longer passed in directly, so it's dropped.
 		public static class Label extends Single {
 
 			protected MatrixStack matrices;
-			protected VertexConsumerProvider vertex;
+			protected OrderedRenderCommandQueue vertex;
 
-			public Label(Entity entity, MatrixStack matrices, VertexConsumerProvider vertex) {
+			public Label(Entity entity, MatrixStack matrices, OrderedRenderCommandQueue vertex) {
 				this.entity = entity;
 				this.matrices = matrices;
 				this.vertex = vertex;
@@ -51,7 +53,7 @@ public class EventEntityRender extends Event {
 				return matrices;
 			}
 
-			public VertexConsumerProvider getVertex() {
+			public OrderedRenderCommandQueue getVertex() {
 				return vertex;
 			}
 
@@ -59,7 +61,7 @@ public class EventEntityRender extends Event {
 				this.matrices = matrices;
 			}
 
-			public void setVertex(VertexConsumerProvider vertex) {
+			public void setVertex(OrderedRenderCommandQueue vertex) {
 				this.vertex = vertex;
 			}
 		}

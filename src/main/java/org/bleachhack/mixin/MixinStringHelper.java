@@ -14,13 +14,16 @@ import org.bleachhack.module.mods.NoKeyBlock;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
-import net.minecraft.SharedConstants;
+import net.minecraft.util.StringHelper;
 
-@Mixin(SharedConstants.class)
-public class MixinSharedConstants {
+// isValidChar moved from SharedConstants to StringHelper in 1.21.11 (and its param went from char to
+// an int codepoint, since typed-character input is now represented as a codepoint via CharInput -
+// see CharInput#isValidChar, which delegates straight into this method).
+@Mixin(StringHelper.class)
+public class MixinStringHelper {
 
 	@Overwrite
-	public static boolean isValidChar(char chr) {
+	public static boolean isValidChar(int chr) {
 		Module noKeyBlock = ModuleManager.getModule(NoKeyBlock.class);
 
 		if (!noKeyBlock.isEnabled()) {

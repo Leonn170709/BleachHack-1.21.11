@@ -12,6 +12,7 @@ import org.bleachhack.module.ModuleCategory;
 import org.bleachhack.setting.module.SettingMode;
 import org.bleachhack.util.InventoryUtils;
 
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.projectile.FishingBobberEntity;
 import net.minecraft.item.ItemStack;
@@ -78,7 +79,7 @@ public class AutoFish extends Module {
 			if (is.getItem() != Items.FISHING_ROD)
 				return -1;
 
-			return EnchantmentHelper.get(is).values().stream().mapToInt(Integer::intValue).sum();
+			return EnchantmentHelper.getEnchantments(is).getEnchantmentEntries().stream().mapToInt(Object2IntMap.Entry::getIntValue).sum();
 		}));
 
 		if (mc.player.getInventory().getStack(slot).getItem() == Items.FISHING_ROD) {

@@ -24,21 +24,21 @@ public interface AccessorFrustum {
 	@Accessor
 	public abstract void setFrustumIntersection(FrustumIntersection vector4f);
 	
-	@Accessor
+	@Accessor("x")
 	public abstract double getX();
-	
-	@Accessor
+
+	@Accessor("x")
 	public abstract void setX(double x);
-	
-	@Accessor
+
+	@Accessor("y")
 	public abstract double getY();
-	
-	@Accessor
+
+	@Accessor("y")
 	public abstract void setY(double y);
-	
-	@Accessor
+
+	@Accessor("z")
 	public abstract double getZ();
-	
-	@Accessor
+
+	@Accessor("z")
 	public abstract void setZ(double z);
 }

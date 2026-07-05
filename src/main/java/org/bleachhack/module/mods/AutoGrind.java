@@ -78,19 +78,15 @@ public class AutoGrind extends Module {
 	}
 
 	private int getEnchantCount(ItemStack stack) {
-		// get the number of entries from EnchantmentHelper.get(stack)
-		return EnchantmentHelper.get(stack).size();
+		// get the number of entries from EnchantmentHelper.getEnchantments(stack)
+		return EnchantmentHelper.getEnchantments(stack).getSize();
 	}
 
 	private int getCurseCount(ItemStack stack) {
 		// needed as EnchantmentHelper's curse checks are bugged for Enchanted Books
 		int curses = 0;
-		if (EnchantmentHelper.get(stack).containsKey(Enchantments.BINDING_CURSE)) {
-			curses += EnchantmentHelper.get(stack).get(Enchantments.BINDING_CURSE);
-		}
-		if (EnchantmentHelper.get(stack).containsKey(Enchantments.VANISHING_CURSE)) {
-			curses += EnchantmentHelper.get(stack).get(Enchantments.VANISHING_CURSE);
-		}
+		curses += EnchantmentHelper.getEnchantments(stack).getLevel(mc.world.getRegistryManager().getEntryOrThrow(Enchantments.BINDING_CURSE));
+		curses += EnchantmentHelper.getEnchantments(stack).getLevel(mc.world.getRegistryManager().getEntryOrThrow(Enchantments.VANISHING_CURSE));
 		return curses;
 	}
 }

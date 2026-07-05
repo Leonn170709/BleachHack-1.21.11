@@ -8,8 +8,6 @@
  */
 package org.bleachhack.mixin;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.passive.AbstractHorseEntity;
 import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventEntityControl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,23 +15,19 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.passive.AnimalEntity;
-import net.minecraft.entity.passive.LlamaEntity;
-import net.minecraft.entity.passive.PigEntity;
-import net.minecraft.entity.passive.StriderEntity;
-import net.minecraft.world.World;
+import net.minecraft.entity.mob.MobEntity;
 
-@Mixin({AbstractHorseEntity.class, PigEntity.class, StriderEntity.class})
-public abstract class MixinLlamaPigStriderEntity extends AnimalEntity {
+// 1.19.4 hooked isSaddled() on AbstractHorseEntity/PigEntity/StriderEntity individually (each had its
+// own copy). 1.21.11 consolidated it into a single hasSaddleEquipped() on the shared MobEntity base
+// class (just checks the SADDLE equipment slot) - Mixin can't inject an inherited-but-not-overridden
+// method into 3 separate leaf classes that don't each redeclare it, so this hooks the one real
+// declaration on MobEntity instead. Harmless for non-rideable mobs since the default check
+// (isWearing(EquipmentSlot.SADDLE)) is already always false for them.
+@Mixin(MobEntity.class)
+public abstract class MixinMobEntity {
 
-	private MixinLlamaPigStriderEntity(EntityType<? extends AnimalEntity> entityType, World world) {
-		super(entityType, world);
-	}
-
-	@Inject(method = "isSaddled", at = @At("HEAD"), cancellable = true)
-	private void isSaddled(CallbackInfoReturnable<Boolean> info) {
+	@Inject(method = "hasSaddleEquipped", at = @At("HEAD"), cancellable = true)
+	private void hasSaddleEquipped(CallbackInfoReturnable<Boolean> info) {
 		EventEntityControl event = new EventEntityControl();
 		BleachHack.eventBus.post(event);
 

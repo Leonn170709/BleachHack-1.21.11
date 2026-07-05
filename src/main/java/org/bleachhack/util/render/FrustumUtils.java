@@ -1,18 +1,25 @@
 package org.bleachhack.util.render;
 
 import org.bleachhack.mixin.AccessorFrustum;
-import org.bleachhack.mixin.AccessorWorldRenderer;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Frustum;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Vector4f;
 
 public class FrustumUtils {
 
+	// 1.21.11's WorldRenderer no longer keeps a persistent "current frustum" field (frustum culling
+	// was reworked to pass the Frustum through the per-frame render call chain as a parameter
+	// instead) - so there's nothing left for an Accessor mixin to expose. MixinWorldRenderer instead
+	// captures the live per-frame Frustum straight out of fillEntityRenderStates(...) into this field.
+	private static Frustum currentFrustum;
+
+	public static void setCurrentFrustum(Frustum frustum) {
+		currentFrustum = frustum;
+	}
+
 	public static Frustum getFrustum() {
-		return ((AccessorWorldRenderer) MinecraftClient.getInstance().worldRenderer).getFrustum();
+		return currentFrustum;
 	}
 
 	public static boolean isBoxVisible(Box box) {

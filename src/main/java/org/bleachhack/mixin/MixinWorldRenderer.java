@@ -13,6 +13,7 @@ import org.bleachhack.event.events.EventBlockEntityRender;
 import org.bleachhack.event.events.EventEntityRender;
 import org.bleachhack.event.events.EventRenderBlockOutline;
 import org.bleachhack.event.events.EventWorldRender;
+import org.bleachhack.util.render.FrustumUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -32,6 +33,7 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.state.OutlineRenderState;
+import net.minecraft.client.render.state.WorldRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.memory.ObjectAllocator;
 import net.minecraft.entity.Entity;
@@ -80,6 +82,11 @@ public class MixinWorldRenderer {
 		Framebuffer framebuffer = MinecraftClient.getInstance().getFramebuffer();
 		RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(framebuffer.getDepthAttachment(), 1.0);
 		BleachHack.eventBus.post(new EventWorldRender.Post(tickCounter.getTickProgress(false)));
+	}
+
+	@Inject(method = "fillEntityRenderStates", at = @At("HEAD"))
+	private void fillEntityRenderStates_head(Camera camera, Frustum frustum, RenderTickCounter tickCounter, WorldRenderState state, CallbackInfo callback) {
+		FrustumUtils.setCurrentFrustum(frustum);
 	}
 
 	@Redirect(method = "fillEntityRenderStates", at = @At(value = "INVOKE",

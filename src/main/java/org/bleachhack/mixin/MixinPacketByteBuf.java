@@ -12,8 +12,13 @@ import net.minecraft.network.PacketByteBuf;
 @Mixin(PacketByteBuf.class)
 public class MixinPacketByteBuf {
 
-	@ModifyArg(method = "readNbt", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/PacketByteBuf;readNbt(Lnet/minecraft/nbt/NbtSizeTracker;)Lnet/minecraft/nbt/NbtElement;"))
-    private NbtSizeTracker increaseLimit(NbtSizeTracker in) {
+	// readNbt() -> readNbt(ByteBuf) -> readNbt(ByteBuf, NbtSizeTracker.forPacket()) - the no-arg
+	// instance method used to call the NbtSizeTracker-taking overload directly, but it now goes
+	// through the static readNbt(ByteBuf) first, which is where the (now hardcoded) size tracker
+	// argument is actually passed, so that's the real interception point.
+	@ModifyArg(method = "readNbt(Lio/netty/buffer/ByteBuf;)Lnet/minecraft/nbt/NbtCompound;",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/network/PacketByteBuf;readNbt(Lio/netty/buffer/ByteBuf;Lnet/minecraft/nbt/NbtSizeTracker;)Lnet/minecraft/nbt/NbtElement;"))
+    private static NbtSizeTracker increaseLimit(NbtSizeTracker in) {
         return ModuleManager.getModule(AntiChunkBan.class).isEnabled() ? NbtSizeTracker.ofUnlimitedBytes() : in;
     }
 }

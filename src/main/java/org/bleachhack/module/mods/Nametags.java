@@ -19,7 +19,9 @@ import net.minecraft.client.resource.language.I18n;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LazyEntityReference;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.entity.mob.Monster;
@@ -163,19 +165,19 @@ public class Nametags extends Module {
 				continue;
 			}
 
-			Vec3d rPos = entity.getPos().subtract(Renderer.getInterpolationOffset(entity)).add(0, entity.getHeight() + 0.25, 0);
+			Vec3d rPos = entity.getEntityPos().subtract(Renderer.getInterpolationOffset(entity)).add(0, entity.getHeight() + 0.25, 0);
 
 			if (entity instanceof PlayerEntity && getSetting(1).asToggle().getState()) {
-				double scale = Math.max(getSetting(1).asToggle().getChild(0).asSlider().getValue() * (mc.cameraEntity.distanceTo(entity) / 20), 1);
+				double scale = Math.max(getSetting(1).asToggle().getChild(0).asSlider().getValue() * (mc.getCameraEntity().distanceTo(entity) / 20), 1);
 
 				List<Text> lines = getPlayerLines((PlayerEntity) entity);
 				drawLines(rPos.x, rPos.y, rPos.z, scale, lines);
 
 				if (getSetting(1).asToggle().getChild(1).asToggle().getState()) {
-					drawItems(rPos.x, rPos.y + (lines.size() + 1) * 0.25 * scale, rPos.z, scale, getMainEquipment(entity));
+					drawItems(rPos.x, rPos.y + (lines.size() + 1) * 0.25 * scale, rPos.z, scale, getMainEquipment((LivingEntity) entity));
 				}
 			} else if (EntityUtils.isAnimal(entity) && getSetting(2).asToggle().getState()) {
-				double scale = Math.max(getSetting(2).asToggle().getChild(0).asSlider().getValue() * (mc.cameraEntity.distanceTo(entity) / 20), 1);
+				double scale = Math.max(getSetting(2).asToggle().getChild(0).asSlider().getValue() * (mc.getCameraEntity().distanceTo(entity) / 20), 1);
 
 				List<Text> lines = getAnimalLines((LivingEntity) entity);
 				drawLines(rPos.x, rPos.y, rPos.z, scale, lines);
@@ -184,23 +186,23 @@ public class Nametags extends Module {
 					drawItems(rPos.x, rPos.y + (lines.size() + 1) * 0.25 * scale, rPos.z, scale, List.of(((FoxEntity) entity).getMainHandStack()));
 				}
 			} else if (entity instanceof Monster && getSetting(3).asToggle().getState()) {
-				double scale = Math.max(getSetting(3).asToggle().getChild(0).asSlider().getValue() * (mc.cameraEntity.distanceTo(entity) / 20), 1);
+				double scale = Math.max(getSetting(3).asToggle().getChild(0).asSlider().getValue() * (mc.getCameraEntity().distanceTo(entity) / 20), 1);
 
 				List<Text> lines = getMobLines((LivingEntity) entity);
 				drawLines(rPos.x, rPos.y, rPos.z, scale, lines);
 
 				if (getSetting(3).asToggle().getChild(1).asToggle().getState()) {
-					drawItems(rPos.x, rPos.y + (lines.size() + 1) * 0.25 * scale, rPos.z, scale, getMainEquipment(entity));
+					drawItems(rPos.x, rPos.y + (lines.size() + 1) * 0.25 * scale, rPos.z, scale, getMainEquipment((LivingEntity) entity));
 				}
 			} else if (entity instanceof ItemEntity && getSetting(4).asToggle().getState()) {
-				double scale = Math.max(getSetting(4).asToggle().getChild(0).asSlider().getValue() * (mc.cameraEntity.distanceTo(entity) / 20), 1);
+				double scale = Math.max(getSetting(4).asToggle().getChild(0).asSlider().getValue() * (mc.getCameraEntity().distanceTo(entity) / 20), 1);
 
 				List<Text> lines = getItemLines((ItemEntity) entity);
 				drawLines(rPos.x, rPos.y, rPos.z, scale, lines);
 			} else if (entity instanceof ArmorStandEntity && getSetting(5).asToggle().getState()) {
-				double scale = Math.max(getSetting(5).asToggle().getChild(0).asSlider().getValue() * (mc.cameraEntity.distanceTo(entity) / 20), 1);
+				double scale = Math.max(getSetting(5).asToggle().getChild(0).asSlider().getValue() * (mc.getCameraEntity().distanceTo(entity) / 20), 1);
 
-				drawItems(rPos.x, rPos.y + 0.25 * scale, rPos.z, scale, getMainEquipment(entity));
+				drawItems(rPos.x, rPos.y + 0.25 * scale, rPos.z, scale, getMainEquipment((LivingEntity) entity));
 			}
 		}
 	}
@@ -233,24 +235,29 @@ public class Nametags extends Module {
 				x, y, z, (offX - w) * scale, (offY - 0.07) * scale, scale * 1.75, false);
 
 		int c = 0;
-		for (Entry<Enchantment, Integer> m : EnchantmentHelper.get(item).entrySet()) {
-			String text = I18n.translate(m.getKey().getName(2).getString());
+		for (it.unimi.dsi.fastutil.objects.Object2IntMap.Entry<net.minecraft.registry.entry.RegistryEntry<Enchantment>> m
+				: EnchantmentHelper.getEnchantments(item).getEnchantmentEntries()) {
+			String text = Enchantment.getName(m.getKey(), m.getIntValue()).getString();
 
 			if (text.isEmpty())
 				continue;
 
 			text = text.replaceFirst("Curse of (.)", "C$1");
 
-			String subText = text.substring(0, Math.min(text.length(), 2)) + m.getValue();
+			String subText = text.substring(0, Math.min(text.length(), 2)) + m.getIntValue();
 
-			WorldRenderer.drawText(Text.literal(subText).styled(s -> s.withColor(TextColor.fromRgb(m.getKey().isCursed() ? 0xff5050 : 0xffb0e0))),
+			WorldRenderer.drawText(Text.literal(subText).styled(s -> s.withColor(TextColor.fromRgb(
+					m.getKey().isIn(net.minecraft.registry.tag.EnchantmentTags.CURSE) ? 0xff5050 : 0xffb0e0))),
 					x, y, z, (offX + 0.02) * scale, (offY + 0.75 - c * 0.34) * scale, scale * 1.4, false);
 			c--;
 		}
 	}
 	
-	private List<ItemStack> getMainEquipment(Entity e) {
-		List<ItemStack> list = Lists.newArrayList(e.getItemsEquipped());
+	private List<ItemStack> getMainEquipment(LivingEntity e) {
+		List<ItemStack> list = Lists.newArrayList(
+				e.getEquippedStack(EquipmentSlot.MAINHAND), e.getEquippedStack(EquipmentSlot.OFFHAND),
+				e.getEquippedStack(EquipmentSlot.FEET), e.getEquippedStack(EquipmentSlot.LEGS),
+				e.getEquippedStack(EquipmentSlot.CHEST), e.getEquippedStack(EquipmentSlot.HEAD));
 		list.add(list.remove(1));
 		return list;
 	}
@@ -259,7 +266,7 @@ public class Nametags extends Module {
 		List<Text> lines = new ArrayList<>();
 		List<Text> mainText = new ArrayList<>();
 
-		PlayerListEntry playerEntry = mc.player.networkHandler.getPlayerListEntry(player.getGameProfile().getId());
+		PlayerListEntry playerEntry = mc.player.networkHandler.getPlayerListEntry(player.getGameProfile().id());
 
 		if (getSetting(1).asToggle().getChild(4).asToggle().getState() && playerEntry != null) { // Ping
 			mainText.add(Text.literal(playerEntry.getLatency() + "ms").formatted(Formatting.GRAY));
@@ -294,8 +301,9 @@ public class Nametags extends Module {
 			boolean tame = animal instanceof AbstractHorseEntity
 					? ((AbstractHorseEntity) animal).isTame() : ((TameableEntity) animal).isTamed();
 
-			UUID ownerUUID = animal instanceof AbstractHorseEntity
-					? ((AbstractHorseEntity) animal).getOwnerUuid() : ((TameableEntity) animal).getOwnerUuid();
+			LazyEntityReference<LivingEntity> ownerRef = animal instanceof AbstractHorseEntity
+					? ((AbstractHorseEntity) animal).getOwnerReference() : ((TameableEntity) animal).getOwnerReference();
+			UUID ownerUUID = ownerRef == null ? null : ownerRef.getUuid();
 
 			if (getSetting(2).asToggle().getChild(4).asToggle().getState() && !animal.isBaby()
 					&& (getSetting(2).asToggle().getChild(4).asToggle().getChild(0).asMode().getMode() != 1 || tame)) {
@@ -311,11 +319,11 @@ public class Nametags extends Module {
 					// Try to see if the owner is online on the server before calling the mojang api
 					Optional<GameProfile> owner = mc.player.networkHandler.getPlayerList().stream()
 							.map(PlayerListEntry::getProfile)
-							.filter(profile -> profile != null && ownerUUID.equals(profile.getId()) && profile.getName() != null)
+							.filter(profile -> profile != null && ownerUUID.equals(profile.id()) && profile.name() != null)
 							.findFirst();
 
 					if (owner.isPresent()) {
-						uuidCache.put(ownerUUID, owner.get().getName());
+						uuidCache.put(ownerUUID, owner.get().name());
 					} else if (!uuidQueue.contains(ownerUUID) && !uuidFutures.containsKey(ownerUUID)) {
 						uuidQueue.add(ownerUUID);
 					}

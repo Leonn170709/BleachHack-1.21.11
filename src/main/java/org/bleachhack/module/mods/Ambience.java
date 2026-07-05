@@ -75,8 +75,8 @@ public class Ambience extends Module {
 	public void onTick(EventTick event) {
 		if (getSetting(0).asToggle().getState()) {
 			if (!weatherManager.isActive()) {
-				weatherManager.setRain(mc.world.getRainGradient(mc.getTickDelta()));
-				weatherManager.setThunder(mc.world.getThunderGradient(mc.getTickDelta()));
+				weatherManager.setRain(mc.world.getRainGradient(mc.getRenderTickCounter().getTickProgress(true)));
+				weatherManager.setThunder(mc.world.getThunderGradient(mc.getRenderTickCounter().getTickProgress(true)));
 			}
 
 			if (getSetting(0).asToggle().getChild(0).asMode().getMode() == 0) {
@@ -92,7 +92,7 @@ public class Ambience extends Module {
 		}
 
 		if (getSetting(1).asToggle().getState()) {
-			mc.world.setTimeOfDay(getSetting(1).asToggle().getChild(0).asSlider().getValueLong());
+			mc.world.getLevelProperties().setTimeOfDay(getSetting(1).asToggle().getChild(0).asSlider().getValueLong());
 		}
 	}
 

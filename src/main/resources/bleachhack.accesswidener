@@ -13,7 +13,8 @@ accessible    field    net/minecraft/client/network/ClientPlayerInteractionManag
 # - ProtocolScreen used to mutate MinecraftVersion's name/protocolVersion/dataPackVersion fields directly.
 #   As of 1.21.11 SharedConstants.getGameVersion() returns an immutable GameVersion interface (record-backed);
 #   MinecraftVersion only exposes static factories now. No field-widener equivalent exists.
-#   ProtocolScreen needs a real rework (spoof at the handshake-packet level instead) - see task #5/ProtocolScreen.java.
+#   ProtocolScreen now spoofs the outgoing handshake packet's protocolVersion instead (see
+#   MixinClientConnection/ProtocolScreen.java) - done.
 
 
 # MinecraftClient
@@ -39,9 +40,9 @@ accessible    field    net/minecraft/client/sound/SoundSystem    sounds    Lcom/
 
 # ChunkBuilder
 # - For MixinChunkRebuildTask to overwrite the chunk building method
-# 1.21.11 restructured chunk building entirely: ChunkBuilder$ChunkData and
-# $BuiltChunk$RebuildTask$RenderData no longer exist. Replaced by top-level ChunkRenderData +
-# BlockRenderLayer + ChunkBuilder$Result. MixinChunkRebuildTask needs a real rewrite - see task #4.
+# 1.21.11 moved the tesselation loop out of RebuildTask into a standalone SectionBuilder.build(...) -
+# MixinChunkRebuildTask now redirects that instead (done, matched line-for-line against SectionBuilder's
+# decompiled source).
 accessible    class    net/minecraft/client/render/chunk/ChunkBuilder$BuiltChunk$RebuildTask
 accessible    class    net/minecraft/client/render/chunk/ChunkRenderData
 
@@ -81,8 +82,8 @@ accessible    field    net/minecraft/client/font/TextRenderer    fonts    Lnet/m
 
 # DisconnectedScreen
 # - For AutoReconnect to read the various fields of DisconnectedScreen
-# reason/reasonHeight were replaced by a single DisconnectionInfo record field ("info"); read the
-# disconnect text via info.reason() in AutoReconnect.java instead - see task #5.
+# reason/reasonHeight were replaced by a single DisconnectionInfo record field ("info"); AutoReconnect.java
+# reads the disconnect text via info.reason() instead - done.
 accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    parent    Lnet/minecraft/client/gui/screen/Screen;
 accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    info    Lnet/minecraft/network/DisconnectionInfo;
 
@@ -95,6 +96,9 @@ accessible    field    net/minecraft/client/gui/screen/ingame/HandledScreen    f
 # SignEditScreen
 # - For AutoSign to read the sign entity from the sign screen
 accessible    field    net/minecraft/client/gui/screen/ingame/AbstractSignEditScreen    blockEntity    Lnet/minecraft/block/entity/SignBlockEntity;
+# - For AutoSign to know which side of the sign (front/back) is being edited, since
+#   UpdateSignC2SPacket now needs that flag explicitly.
+accessible    field    net/minecraft/client/gui/screen/ingame/AbstractSignEditScreen    front    Z
 
 
 ## =========== Entities ===========
@@ -145,7 +149,7 @@ mutable       field    net/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket
 # - For ElytraFly & PacketFly to change the yaw and pitch
 # 1.21.11: PlayerPositionLookS2CPacket is now a record; pitch/yaw were merged into a nested
 # EntityPosition record ("change" field). EntityPosition has a withRotation(float yaw, float pitch)
-# method - modules should do packet.change = packet.change().withRotation(newYaw, newPitch) - see task #5.
+# method - ElytraFly.java/PacketFly.java do packet.change = packet.change().withRotation(newYaw, newPitch) - done.
 accessible    field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    change    Lnet/minecraft/entity/EntityPosition;
 mutable       field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    change    Lnet/minecraft/entity/EntityPosition;
 

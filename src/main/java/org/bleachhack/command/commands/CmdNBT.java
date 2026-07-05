@@ -17,10 +17,13 @@ import org.bleachhack.util.BleachLogger;
 import org.bleachhack.util.io.BleachJsonHelper;
 
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtHelper;
 import net.minecraft.nbt.StringNbtReader;
+import net.minecraft.predicate.NbtPredicate;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 
@@ -55,7 +58,7 @@ public class CmdNBT extends Command {
 				Text copy = Text.literal("\u00a7e\u00a7l<COPY>")
 						.styled(s ->
 						s.withClickEvent(
-								new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textNbt.getString()))
+								new ClickEvent.CopyToClipboard(textNbt.getString()))
 						.withHoverEvent(
 								new HoverEvent.ShowText(Text.literal("Copy the nbt of this item to your clipboard"))));
 
@@ -83,15 +86,18 @@ public class CmdNBT extends Command {
 			}
 
 			ItemStack item = mc.player.getMainHandStack();
-			item.setNbt(StringNbtReader.parse(StringUtils.join(ArrayUtils.subarray(args, 1, args.length), ' ')));
-			BleachLogger.info("\u00a76Set NBT of " + item.getItem().getName().getString() + " to\n" + BleachJsonHelper.formatJson(item.getNbt().toString()));
+			// ported: 1.19.4 let you edit the item's whole raw nbt tag; 1.21.11 splits that tag into
+			// typed components (damage, enchantments, ...) plus a free-form DataComponentTypes.CUSTOM_DATA
+			// blob (NbtComponent) for anything else, so "nbt set/wipe/get hand" now target that component.
+			item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(StringNbtReader.readCompound(StringUtils.join(ArrayUtils.subarray(args, 1, args.length), ' '))));
+			BleachLogger.info("\u00a76Set NBT of " + item.getItem().getName().getString() + " to\n" + BleachJsonHelper.formatJson(item.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt().toString()));
 		} else if (args[0].equalsIgnoreCase("wipe")) {
 			if (!mc.interactionManager.getCurrentGameMode().isCreative()) {
 				BleachLogger.error("You must be in creative mode to wipe NBT!");
 				return;
 			}
 
-			mc.player.getMainHandStack().setNbt(new NbtCompound());
+			mc.player.getMainHandStack().remove(DataComponentTypes.CUSTOM_DATA);
 		} else {
 			throw new CmdSyntaxException();
 		}
@@ -99,7 +105,7 @@ public class CmdNBT extends Command {
 
 	private NbtCompound getNbt(String arg) {
 		if (arg.equalsIgnoreCase("hand")) {
-			return mc.player.getMainHandStack().getOrCreateNbt();
+			return mc.player.getMainHandStack().getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
 		} else if (arg.equalsIgnoreCase("block")) {
 			HitResult target = mc.crosshairTarget;
 			if (target.getType() == HitResult.Type.BLOCK) {
@@ -107,7 +113,7 @@ public class CmdNBT extends Command {
 				BlockEntity be = mc.world.getBlockEntity(pos);
 
 				if (be != null) {
-					return be.createNbt();
+					return be.createNbt(mc.world.getRegistryManager());
 				} else {
 					return new NbtCompound();
 				}
@@ -118,7 +124,7 @@ public class CmdNBT extends Command {
 		} else if (arg.equalsIgnoreCase("entity")) {
 			HitResult target = mc.crosshairTarget;
 			if (target.getType() == HitResult.Type.ENTITY) {
-				return ((EntityHitResult) target).getEntity().writeNbt(new NbtCompound());
+				return NbtPredicate.entityToNbt(((EntityHitResult) target).getEntity());
 			}
 
 			BleachLogger.error("Not looking at an entity.");

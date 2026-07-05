@@ -31,6 +31,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -70,12 +71,12 @@ public class MixinTitleScreen extends Screen {
 							Triple.of(new BleachOptionsScreen(null), "Options", new ItemStack(Items.REDSTONE)),
 							Triple.of(new BleachCreditsScreen(), "Credits", new ItemStack(Items.DRAGON_HEAD))) {
 
-						public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-							if (keyCode == ModuleManager.getModule(ClickGui.class).getKey()) {
+						public boolean keyPressed(KeyInput input) {
+							if (input.key() == ModuleManager.getModule(ClickGui.class).getKey()) {
 								selectWindow(2);
 							}
 
-							return super.keyPressed(keyCode, scanCode, modifiers);
+							return super.keyPressed(input);
 						}
 					});
 		} else {

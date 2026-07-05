@@ -8,19 +8,17 @@
  */
 package org.bleachhack.command.commands;
 
-import net.minecraft.client.gui.DrawableHelper;
 import org.bleachhack.command.Command;
 import org.bleachhack.command.CommandCategory;
 import org.bleachhack.command.exception.CmdSyntaxException;
 import org.bleachhack.util.BleachLogger;
 import org.bleachhack.util.BleachQueue;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.util.math.MatrixStack;
 
 public class CmdInvPeek extends Command {
 
@@ -41,16 +39,14 @@ public class CmdInvPeek extends Command {
 					BleachLogger.info("Opened inventory for " + e.getDisplayName().getString());
 
 					mc.setScreen(new InventoryScreen(e) {
-						public boolean mouseClicked(double mouseX, double mouseY, int button) {
+						@Override
+						public boolean mouseClicked(Click click, boolean doubled) {
 							return false;
 						}
 
-						protected void drawBackground(MatrixStack matrices, float delta, int mouseX, int mouseY) {
-							RenderSystem.setShader(GameRenderer::getPositionTexProgram);
-							RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-							RenderSystem.setShaderTexture(0, BACKGROUND_TEXTURE);
-							drawTexture(matrices, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight);
-							drawEntity(matrices, x + 51, y + 75, 30, (float) (x + 51) - mouseX, (float) (y + 75 - 50) - mouseY, this.client.player);
+						protected void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
+							context.drawTexture(RenderPipelines.GUI_TEXTURED, BACKGROUND_TEXTURE, x, y, 0.0F, 0.0F, this.backgroundWidth, this.backgroundHeight, 256, 256);
+							drawEntity(context, x + 26, y + 8, x + 75, y + 78, 30, 0.0625F, mouseX, mouseY, this.client.player);
 						}
 					});
 				});

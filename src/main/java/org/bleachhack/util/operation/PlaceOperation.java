@@ -15,8 +15,11 @@ import org.bleachhack.util.render.WorldRenderer;
 import org.bleachhack.util.render.color.QuadColor;
 import org.bleachhack.util.world.WorldUtils;
 
+import java.util.List;
+
 import net.minecraft.block.BlockState;
-import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.BlockRenderLayers;
+import net.minecraft.client.render.model.BlockModelPart;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -69,12 +72,13 @@ public class PlaceOperation extends Operation {
 			MatrixStack matrices = WorldRenderer.matrixFrom(pos.getX(), pos.getY(), pos.getZ());
 
 			BlockState state = ((BlockItem) item).getBlock().getDefaultState();
+			List<BlockModelPart> parts = mc.getBlockRenderManager().getModel(state).getParts(Random.create(0L));
 
 			mc.getBlockRenderManager().renderBlock(state, pos, mc.world, matrices,
-					mc.getBufferBuilders().getEntityVertexConsumers().getBuffer(RenderLayers.getMovingBlockLayer(state)),
-					false, Random.create(0L));
+					mc.getBufferBuilders().getEntityVertexConsumers().getBuffer(BlockRenderLayers.getMovingBlockLayer(state)),
+					false, parts);
 
-			mc.getBufferBuilders().getEntityVertexConsumers().draw(RenderLayers.getMovingBlockLayer(state));
+			mc.getBufferBuilders().getEntityVertexConsumers().draw(BlockRenderLayers.getMovingBlockLayer(state));
 
 			for (Box box: state.getOutlineShape(mc.world, pos).getBoundingBoxes()) {
 				Renderer.drawBoxFill(box.offset(pos), QuadColor.single(0.45f, 0.7f, 1f, 0.4f));

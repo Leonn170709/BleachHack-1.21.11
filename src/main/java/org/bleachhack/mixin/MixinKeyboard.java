@@ -21,14 +21,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.client.Keyboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.client.input.KeyInput;
 
 @Mixin(Keyboard.class)
 public class MixinKeyboard {
 
+	// onKey's signature changed from (long, int key, int scanCode, int action, int modifiers) to
+	// (long, int action, KeyInput input) - key/scanCode/modifiers moved into the KeyInput record.
+	// The old second injection point (an InputUtil.isKeyPressed call, ordinal 5, inside the F3-debug-key
+	// handling block near the top of the method) no longer exists - 1.21.11's onKey only calls
+	// isKeyPressed once (ordinal 0, for the debug crash key). Both hooks just need to run early/
+	// unconditionally before Minecraft's own key handling can consume the key, so both are HEAD now.
 	@Inject(method = "onKey", at = @At("HEAD"), cancellable = true)
-	private void onKeyEvent(long windowPointer, int key, int scanCode, int action, int modifiers, CallbackInfo callbackInfo) {
-		if (key >= 0) {
-			EventKeyPress.Global event = new EventKeyPress.Global(key, scanCode, action, modifiers);
+	private void onKeyEvent(long windowPointer, int action, KeyInput input, CallbackInfo callbackInfo) {
+		if (input.key() >= 0) {
+			EventKeyPress.Global event = new EventKeyPress.Global(input.key(), input.scancode(), action, input.modifiers());
 			BleachHack.eventBus.post(event);
 
 			if (event.isCancelled()) {
@@ -36,17 +43,17 @@ public class MixinKeyboard {
 			}
 		}
 	}
-	
-	@Inject(method = "onKey", at = @At(value = "INVOKE", target = "net/minecraft/client/util/InputUtil.isKeyPressed(JI)Z", ordinal = 5), cancellable = true)
-	private void onKeyEvent_1(long windowPointer, int key, int scanCode, int action, int modifiers, CallbackInfo callbackInfo) {
-		if (Option.CHAT_QUICK_PREFIX.getValue() && Command.getPrefix().length() == 1 && key == Command.getPrefix().charAt(0)) {
-			MinecraftClient.getInstance().setScreen(new ChatScreen(Command.getPrefix()));
+
+	@Inject(method = "onKey", at = @At("HEAD"), cancellable = true)
+	private void onKeyEvent_1(long windowPointer, int action, KeyInput input, CallbackInfo callbackInfo) {
+		if (Option.CHAT_QUICK_PREFIX.getValue() && Command.getPrefix().length() == 1 && input.key() == Command.getPrefix().charAt(0)) {
+			MinecraftClient.getInstance().setScreen(new ChatScreen(Command.getPrefix(), false));
 		}
 
-		ModuleManager.handleKey(key);
+		ModuleManager.handleKey(input.key());
 
-		if (key >= 0) {
-			EventKeyPress.InWorld event = new EventKeyPress.InWorld(key, scanCode);
+		if (input.key() >= 0) {
+			EventKeyPress.InWorld event = new EventKeyPress.InWorld(input.key(), input.scancode());
 			BleachHack.eventBus.post(event);
 
 			if (event.isCancelled()) {

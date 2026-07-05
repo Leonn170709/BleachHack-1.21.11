@@ -73,7 +73,7 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 
 		matrices.getMatrices().scale(scale, scale);
 
-		matrices.drawTextWithShadow(mc.textRenderer, "?", (x + 5) * offset, (y + 4) * offset, -1);
+		matrices.drawTextWithShadow(mc.textRenderer, "?", (int) ((x + 5) * offset), (int) ((y + 4) * offset), -1);
 
 		matrices.getMatrices().popMatrix();
 	}
