@@ -2,7 +2,7 @@ package org.bleachhack.gui.window.widget;
 
 import org.bleachhack.gui.window.Window;
 
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 
 public class WindowBoxWidget extends WindowWidget {
 
@@ -32,7 +32,7 @@ public class WindowBoxWidget extends WindowWidget {
 	}
 
 	@Override
-	public void render(MatrixStack matrices, int windowX, int windowY, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int windowX, int windowY, int mouseX, int mouseY) {
 		super.render(matrices, windowX, windowY, mouseX, mouseY);
 
 		Window.fill(matrices, windowX + x1, windowY + y1, windowX + x2, windowY + y2,

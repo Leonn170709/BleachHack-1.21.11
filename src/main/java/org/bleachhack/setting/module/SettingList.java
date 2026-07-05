@@ -8,12 +8,12 @@
  */
 package org.bleachhack.setting.module;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.sound.SoundEvents;
@@ -44,19 +44,19 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 		this.itemPool = new LinkedHashSet<>(itemPool);
 	}
 
-	public void render(ModuleWindow window, MatrixStack matrices, int x, int y, int len) {
+	public void render(ModuleWindow window, DrawContext matrices, int x, int y, int len) {
 		if (window.mouseOver(x, y, x + len, y + 12)) {
-			DrawableHelper.fill(matrices, x + 1, y, x + len, y + 12, 0x70303070);
+			matrices.fill(x + 1, y, x + len, y + 12, 0x70303070);
 		}
 
-		MinecraftClient.getInstance().textRenderer.drawWithShadow(matrices, getName(), x + 3, y + 2, 0xcfe0cf);
+		matrices.drawTextWithShadow(MinecraftClient.getInstance().textRenderer, getName(), x + 3, y + 2, 0xcfe0cf);
 
-		MinecraftClient.getInstance().textRenderer.drawWithShadow(matrices, "...", x + len - 7, y + 2, 0xcfd0cf);
+		matrices.drawTextWithShadow(MinecraftClient.getInstance().textRenderer, "...", x + len - 7, y + 2, 0xcfd0cf);
 
 		if (window.mouseOver(x, y, x + len, y + 12) && window.lmDown) {
 			window.mouseReleased(window.mouseX, window.mouseY, 1);
-			MinecraftClient.getInstance().currentScreen.mouseReleased(window.mouseX, window.mouseY, 0);
-			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
+			MinecraftClient.getInstance().currentScreen.mouseReleased(new Click(window.mouseX, window.mouseY, new MouseInput(0, 0)));
+			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
 			MinecraftClient.getInstance().setScreen(new ListWidowScreen(MinecraftClient.getInstance().currentScreen));
 		}
 	}
@@ -65,17 +65,17 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 		return getValue().contains(item);
 	}
 
-	public void renderItem(MinecraftClient mc, MatrixStack matrices, T item, int x, int y, int w, int h) {
-		matrices.push();
+	public void renderItem(MinecraftClient mc, DrawContext matrices, T item, int x, int y, int w, int h) {
+		matrices.getMatrices().pushMatrix();
 
 		float scale = (h - 2) / 10f;
 		float offset = 1f / scale;
 
-		matrices.scale(scale, scale, 1f);
+		matrices.getMatrices().scale(scale, scale);
 
-		mc.textRenderer.drawWithShadow(matrices, "?", (x + 5) * offset, (y + 4) * offset, -1);
+		matrices.drawTextWithShadow(mc.textRenderer, "?", (x + 5) * offset, (y + 4) * offset, -1);
 
-		matrices.pop();
+		matrices.getMatrices().popMatrix();
 	}
 
 	/**
@@ -143,12 +143,12 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 			scrollbar = getWindow(0).addWidget(new WindowScrollbarWidget(x2 - 11, 12, 0, y2 - 39, scrollbar == null ? 0 : scrollbar.getPageOffset()));
 		}
 
-		public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-			renderBackground(matrices);
+		public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+			renderBackground(matrices, mouseX, mouseY, delta);
 			super.render(matrices, mouseX, mouseY, delta);
 		}
 
-		public void onRenderWindow(MatrixStack matrices, int window, int mouseX, int mouseY) {
+		public void onRenderWindow(DrawContext matrices, int window, int mouseX, int mouseY) {
 			super.onRenderWindow(matrices, window, mouseX, mouseY);
 
 			toAddItem = null;
@@ -194,25 +194,19 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 					int curY = y1 + inputField.y1 - 4 - toDraw.size() * 17;
 					int longest = toDraw.stream().mapToInt(e -> textRenderer.getWidth(getName(e))).max().orElse(0);
 
-					RenderSystem.getModelViewStack().push();
-					RenderSystem.getModelViewStack().translate(0, 0, 150);
-
-					matrices.push();
-					matrices.translate(0, 0, 150);
-
+					// 1.19.4 pushed a Z offset here (RenderSystem model-view matrix + MatrixStack) so the
+					// search dropdown draws above the entry list. DrawContext has no Z axis (Matrix3x2f is
+					// 2D) - its GUI queue instead layers strictly by submission order, and this dropdown is
+					// already submitted after the entry list above, so it draws on top with no extra work.
 					for (T e: toDraw) {
 						drawSearchEntry(matrices, e, x1 + inputField.x1, curY, longest + 23, 16, mouseX, mouseY);
 						curY += 17;
 					}
-
-					matrices.pop();
-					RenderSystem.getModelViewStack().pop();
-					RenderSystem.applyModelViewMatrix();
 				}
 			}
 		}
 
-		private void drawEntry(MatrixStack matrices, T item, int x, int y, int width, int height, int mouseX, int mouseY) {
+		private void drawEntry(DrawContext matrices, T item, int x, int y, int width, int height, int mouseX, int mouseY) {
 			boolean mouseOverDelete = mouseX >= x + width - 14 && mouseX <= x + width - 1 && mouseY >= y + 2 && mouseY <= y + height - 2;
 			Window.fill(matrices, x + width - 14, y + 2, x + width - 1, y + height - 2, mouseOverDelete ? 0x4fb070f0 : 0x60606090);
 
@@ -222,13 +216,13 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 
 			renderItem(client, matrices, item, x, y, height, height);
 
-			drawTextWithShadow(matrices, textRenderer, getName(item), x + height + 4, y + 4, -1);
-			drawTextWithShadow(matrices, textRenderer, "\u00a7cx", x + width - 10, y + 5, -1);
+			matrices.drawTextWithShadow(textRenderer, getName(item), x + height + 4, y + 4, -1);
+			matrices.drawTextWithShadow(textRenderer, "\u00a7cx", x + width - 10, y + 5, -1);
 		}
 
-		private void drawSearchEntry(MatrixStack matrices, T item, int x, int y, int width, int height, int mouseX, int mouseY) {
+		private void drawSearchEntry(DrawContext matrices, T item, int x, int y, int width, int height, int mouseX, int mouseY) {
 			boolean mouseOver = mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
-			DrawableHelper.fill(matrices, x, y - 1, x + width, y + height, mouseOver ? 0xdf8070d0 : 0xb0606090);
+			matrices.fill(x, y - 1, x + width, y + height, mouseOver ? 0xdf8070d0 : 0xb0606090);
 
 			if (mouseOver) {
 				toAddItem = item;
@@ -236,7 +230,7 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 
 			renderItem(client, matrices, item, x, y, height, height);
 
-			drawTextWithShadow(matrices, textRenderer, getName(item), x + height + 4, y + 4, -1);
+			matrices.drawTextWithShadow(textRenderer, getName(item), x + height + 4, y + 4, -1);
 		}
 
 		@Override
@@ -249,28 +243,28 @@ public abstract class SettingList<T> extends ModuleSetting<LinkedHashSet<T>> {
 			return false;
 		}
 
-		public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		public boolean mouseClicked(Click click, boolean doubleClick) {
 			if (toAddItem != null) {
 				getValue().add(toAddItem);
 				inputField.textField.setFocused(true);
-				client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
+				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
 				BleachFileHelper.SCHEDULE_SAVE_MODULES.set(true);
 				return false;
 			} else if (toDeleteItem != null) {
 				getValue().remove(toDeleteItem);
-				client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
+				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
 				BleachFileHelper.SCHEDULE_SAVE_MODULES.set(true);
 			}
 
-			return super.mouseClicked(mouseX, mouseY, button);
+			return super.mouseClicked(click, doubleClick);
 		}
 
-		public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+		public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
 			if (!inputField.textField.isFocused() || inputField.textField.getText().isEmpty()) {
-				scrollbar.scroll(amount);
+				scrollbar.scroll(verticalAmount);
 			}
 
-			return super.mouseScrolled(mouseX, mouseY, amount);
+			return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 		}
 	}
 }

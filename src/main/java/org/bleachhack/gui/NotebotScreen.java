@@ -8,9 +8,9 @@
  */
 package org.bleachhack.gui;
 
-import net.minecraft.block.enums.Instrument;
-import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.block.enums.NoteBlockInstrument;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
@@ -71,12 +71,12 @@ public class NotebotScreen extends WindowScreen {
 		Util.getOperatingSystem().open(URI.create("https://www.youtube.com/watch?v=Z6O80jItoAk"))));
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-		renderBackground(matrices);
+	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+		renderBackground(matrices, mouseX, mouseY, delta);
 		super.render(matrices, mouseX, mouseY, delta);
 	}
 
-	public void onRenderWindow(MatrixStack matrices, int window, int mouseX, int mouseY) {
+	public void onRenderWindow(DrawContext matrices, int window, int mouseX, int mouseY) {
 		super.onRenderWindow(matrices, window, mouseX, mouseY);
 
 		if (window == 0) {
@@ -89,10 +89,10 @@ public class NotebotScreen extends WindowScreen {
 			for (int i = y + 20; i < y + h - 27; i += 10)
 				pageEntries++;
 
-			drawCenteredTextWithShadow(matrices, textRenderer, "Page " + (page + 1), x + 55, y + 5, 0xc0c0ff);
+			matrices.drawCenteredTextWithShadow(textRenderer, "Page " + (page + 1), x + 55, y + 5, 0xc0c0ff);
 
 			fillButton(matrices, x + 10, y + h - 13, x + 99, y + h - 3, 0xff3a3a3a, 0xff353535, mouseX, mouseY);
-			drawCenteredTextWithShadow(matrices, textRenderer, "Download Songs..", x + 55, y + h - 12, 0xc0dfdf);
+			matrices.drawCenteredTextWithShadow(textRenderer, "Download Songs..", x + 55, y + h - 12, 0xc0dfdf);
 
 			Song nbSong = ModuleManager.getModule(Notebot.class).song;
 			int c = 0, c1 = -1;
@@ -106,33 +106,31 @@ public class NotebotScreen extends WindowScreen {
 				fillButton(matrices, x + 5, y + 15 + c * 10, x + 105, y + 25 + c * 10,
 						nbSong != null && s.equals(nbSong.filename) ? 0xf0408040 : entry != null && s.equals(entry.filename) ? 0xf0202020 : 0xf0404040, 0xf0303030, mouseX, mouseY);
 
-				drawCenteredTextWithShadow(matrices, textRenderer, textRenderer.trimToWidth(s, 100), x + 55, y + 16 + c * 10, -1);
+				matrices.drawCenteredTextWithShadow(textRenderer, textRenderer.trimToWidth(s, 100), x + 55, y + 16 + c * 10, -1);
 
 				c++;
 			}
 
 			if (entry != null) {
 				int textX = x + w - w / 4;
-				drawCenteredTextWithShadow(matrices, textRenderer, entry.name, textX, y + 8, 0xffffff);
-				drawCenteredTextWithShadow(matrices, textRenderer, "By: " + entry.author, textX, y + 18, 0xb0b0b0);
+				matrices.drawCenteredTextWithShadow(textRenderer, entry.name, textX, y + 8, 0xffffff);
+				matrices.drawCenteredTextWithShadow(textRenderer, "By: " + entry.author, textX, y + 18, 0xb0b0b0);
 				
-				drawCenteredTextWithShadow(matrices, textRenderer, "Format: \u00a7a" + entry.format, textX, y + 35, 0xb0b0b0);
-				drawCenteredTextWithShadow(matrices, textRenderer, "Length: \u00a7f" +  entry.length / 20 + "s", textX, y + 45, 0xb0b0b0);
+				matrices.drawCenteredTextWithShadow(textRenderer, "Format: \u00a7a" + entry.format, textX, y + 35, 0xb0b0b0);
+				matrices.drawCenteredTextWithShadow(textRenderer, "Length: \u00a7f" +  entry.length / 20 + "s", textX, y + 45, 0xb0b0b0);
 				//drawCenteredText(matrices, textRenderer, "Notes: \u00a7f" + entry.notes.size(), textX, y + 55, 0xb0b0b0);
-				drawCenteredTextWithShadow(matrices, textRenderer, "Noteblocks: ", textX, y + 62, 0x80f080);
+				matrices.drawCenteredTextWithShadow(textRenderer, "Noteblocks: ", textX, y + 62, 0x80f080);
 
 				int c2 = 0;
-				for (Entry<Instrument, ItemStack> e : NotebotUtils.INSTRUMENT_TO_ITEM.entrySet()) {
+				for (Entry<NoteBlockInstrument, ItemStack> e : NotebotUtils.INSTRUMENT_TO_ITEM.entrySet()) {
 					int count = (int) entry.requirements.stream().filter(n -> n.instrument == e.getKey().ordinal()).count();
 
 					if (count != 0) {
 						// itemRenderer.zOffset = 500 - c2 * 20;
-						drawCenteredTextWithShadow(matrices, textRenderer, StringUtils.capitalize(e.getKey().asString()) + " x" + count,
+						matrices.drawCenteredTextWithShadow(textRenderer, StringUtils.capitalize(e.getKey().asString()) + " x" + count,
 								textX, y + 74 + c2 * 10, 0x50f050);
 
-						DiffuseLighting.enableGuiDepthLighting();
-						itemRenderer.renderGuiItemIcon(matrices, e.getValue(), textX + 55, y + 70 + c2 * 10);
-						DiffuseLighting.disableGuiDepthLighting();
+						matrices.drawItem(e.getValue(), textX + 55, y + 70 + c2 * 10);
 
 						c2++;
 					}
@@ -143,11 +141,11 @@ public class NotebotScreen extends WindowScreen {
 				fillButton(matrices, x + w - w / 4 - w / 8, y + h - 27, x + w - w / 4 + w / 8, y + h - 17, 0xff303080, 0xff202070, mouseX, mouseY);
 
 				int pixels = (int) Math.round(MathHelper.clamp((w / 4d) * ((double) playTick / (double) entry.length), 0, w / 4d));
-				fill(matrices, x + w - w / 4 - w / 8, y + h - 27, (x + w - w / 4 - w / 8) + pixels, y + h - 17, 0x507050ff);
+				matrices.fill( x + w - w / 4 - w / 8, y + h - 27, (x + w - w / 4 - w / 8) + pixels, y + h - 17, 0x507050ff);
 
-				drawCenteredTextWithShadow(matrices, textRenderer, "Delete", (int) (x + w - w / 2.8), y + h - 14, 0xff0000);
-				drawCenteredTextWithShadow(matrices, textRenderer, "Select", x + w - w / 8, y + h - 14, 0x00ff00);
-				drawCenteredTextWithShadow(matrices, textRenderer, playing ? "Previewing.." : "Preview", x + w - w / 4, y + h - 26, 0x6060ff);
+				matrices.drawCenteredTextWithShadow(textRenderer, "Delete", (int) (x + w - w / 2.8), y + h - 14, 0xff0000);
+				matrices.drawCenteredTextWithShadow(textRenderer, "Select", x + w - w / 8, y + h - 14, 0x00ff00);
+				matrices.drawCenteredTextWithShadow(textRenderer, playing ? "Previewing.." : "Preview", x + w - w / 4, y + h - 26, 0x6060ff);
 			}
 		}
 	}
@@ -164,7 +162,10 @@ public class NotebotScreen extends WindowScreen {
 		return false;
 	}
 
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(Click click, boolean doubleClick) {
+		double mouseX = click.x();
+		double mouseY = click.y();
+
 		if (!getWindow(0).closed) {
 			int x = getWindow(0).x1;
 			int y = getWindow(0).y1 + 10;
@@ -212,10 +213,10 @@ public class NotebotScreen extends WindowScreen {
 			}
 		}
 
-		return super.mouseClicked(mouseX, mouseY, button);
+		return super.mouseClicked(click, doubleClick);
 	}
 
-	private void fillButton(MatrixStack matrices, int x1, int y1, int x2, int y2, int color, int colorHover, int mouseX, int mouseY) {
-		fill(matrices, x1, y1, x2, y2, (mouseX > x1 && mouseX < x2 && mouseY > y1 && mouseY < y2 ? colorHover : color));
+	private void fillButton(DrawContext matrices, int x1, int y1, int x2, int y2, int color, int colorHover, int mouseX, int mouseY) {
+		matrices.fill( x1, y1, x2, y2, (mouseX > x1 && mouseX < x2 && mouseY > y1 && mouseY < y2 ? colorHover : color));
 	}
 }

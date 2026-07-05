@@ -8,12 +8,11 @@
  */
 package org.bleachhack.module.mods;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
 
@@ -22,7 +21,6 @@ import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventPacket;
 import org.bleachhack.event.events.EventRenderInGameHud;
@@ -106,49 +104,49 @@ public class UI extends Module {
 				new UIWindow(new Position("l", 1, "b", 0), container,
 						() -> getSetting(3).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(coordsText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, coordsText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, coordsText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("fps",
 				new UIWindow(new Position("l", 1, "coords", 0), container,
 						() -> getSetting(1).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(fpsText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, fpsText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, fpsText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("ping",
 				new UIWindow(new Position("l", 1, "fps", 0), container,
 						() -> getSetting(2).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(pingText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, pingText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, pingText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("tps",
 				new UIWindow(new Position("l", 1, "ping", 0), container,
 						() -> getSetting(4).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(tpsText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, tpsText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, tpsText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("durability",
 				new UIWindow(new Position(0.2, 0.9), container,
 						() -> getSetting(5).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(durabilityText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, durabilityText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, durabilityText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("server",
 				new UIWindow(new Position(0.2, 0.85, "durability", 0), container,
 						() -> getSetting(6).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(serverText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, serverText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, serverText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		container.windows.put("timestamp",
 				new UIWindow(new Position(0.2, 0.8, "server", 0), container,
 						() -> getSetting(7).asToggle().getState(),
 						() -> new int[] { mc.textRenderer.getWidth(timestampText) + 2, 10 },
-						(ms, x, y) -> mc.textRenderer.drawWithShadow(ms, timestampText, x + 1, y + 1, 0xa0a0a0))
+						(ms, x, y) -> ms.drawTextWithShadow(mc.textRenderer, timestampText, x + 1, y + 1, 0xa0a0a0))
 				);
 
 		// Players
@@ -211,7 +209,7 @@ public class UI extends Module {
 				.append(colorText(Integer.toString(fps), Math.min(fps, 120) / 360f));
 
 		// Ping
-		PlayerListEntry playerEntry = mc.player.networkHandler.getPlayerListEntry(mc.player.getGameProfile().getId());
+		PlayerListEntry playerEntry = mc.player.networkHandler.getPlayerListEntry(mc.player.getGameProfile().id());
 		int ping = playerEntry == null ? 0 : playerEntry.getLatency();
 		pingText = Text.literal("Ping: ")
 				.append(colorText(Integer.toString(ping), (800 - MathHelper.clamp(ping, 0, 800)) / 2400f));
@@ -219,8 +217,8 @@ public class UI extends Module {
 		// Coords
 		boolean nether = mc.world.getRegistryKey().getValue().getPath().contains("nether");
 		BlockPos pos = mc.player.getBlockPos();
-		BlockPos pos2 = nether ? BlockPos.ofFloored(mc.player.getPos().multiply(8, 1, 8))
-				: BlockPos.ofFloored(mc.player.getPos().multiply(0.125, 1, 0.125));
+		BlockPos pos2 = nether ? BlockPos.ofFloored(mc.player.getEntityPos().multiply(8, 1, 8))
+				: BlockPos.ofFloored(mc.player.getEntityPos().multiply(0.125, 1, 0.125));
 
 		coordsText = Text.literal("XYZ: ")
 				.append(Text.literal(pos.getX() + " " + pos.getY() + " " + pos.getZ()).styled(s -> s.withColor(nether ? 0xb02020 : 0x40f0f0)))
@@ -239,8 +237,9 @@ public class UI extends Module {
 		// Durability
 		ItemStack mainhand = mc.player.getMainHandStack();
 		if (mainhand.isDamageable()) {
-			int durability = mainhand.getOrCreateNbt().contains("dmg")
-					? NumberUtils.toInt(mainhand.getOrCreateNbt().get("dmg").asString()) : mainhand.getMaxDamage() - mainhand.getDamage();
+			// 1.19.4 read the raw "dmg" NBT tag as a fallback; ItemStack has no raw NBT access at all
+			// anymore (data components replaced it), and getDamage() was already the normal path here.
+			int durability = mainhand.getMaxDamage() - mainhand.getDamage();
 
 			durabilityText = Text.literal("Durability: ")
 					.append(colorText(Integer.toString(durability), (float) durability / mainhand.getMaxDamage() / 3f % 1f));
@@ -285,7 +284,7 @@ public class UI extends Module {
 		return new int[] { mc.textRenderer.getWidth(moduleListText.get(0)) + inner + outer, moduleListText.size() * 10 };
 	}
 
-	public void drawModuleList(MatrixStack matrices, int x, int y) {
+	public void drawModuleList(DrawContext matrices, int x, int y) {
 		if (moduleListText.isEmpty()) return;
 
 		int arrayCount = 0;
@@ -301,18 +300,18 @@ public class UI extends Module {
 			int outerX = rightAlign ? textStart - 3 : textStart + mc.textRenderer.getWidth(t) + 1;
 
 			if (fill) {
-				DrawableHelper.fill(matrices, rightAlign ? textStart - 2 : startX, y + arrayCount * 10, rightAlign ? startX : outerX, y + 10 + arrayCount * 10, 0x70003030);
+				matrices.fill(rightAlign ? textStart - 2 : startX, y + arrayCount * 10, rightAlign ? startX : outerX, y + 10 + arrayCount * 10, 0x70003030);
 			}
 
 			if (inner) {
-				DrawableHelper.fill(matrices, rightAlign ? startX - 1 : startX, y + arrayCount * 10, rightAlign ? startX : startX + 1, y + 10 + arrayCount * 10, color);
+				matrices.fill(rightAlign ? startX - 1 : startX, y + arrayCount * 10, rightAlign ? startX : startX + 1, y + 10 + arrayCount * 10, color);
 			}
 
 			if (outer) {
-				DrawableHelper.fill(matrices, outerX, y + arrayCount * 10, outerX + 1, y + 10 + arrayCount * 10, color);
+				matrices.fill(outerX, y + arrayCount * 10, outerX + 1, y + 10 + arrayCount * 10, color);
 			}
 
-			mc.textRenderer.drawWithShadow(matrices, t, textStart, y + 1 + arrayCount * 10, color);
+			matrices.drawTextWithShadow(mc.textRenderer, t, textStart, y + 1 + arrayCount * 10, color);
 			arrayCount++;
 		}
 	}
@@ -335,8 +334,8 @@ public class UI extends Module {
 		return new int[] { nameLengths.get(0) + 2, nameLengths.size() * 10 + 1 };
 	}
 
-	public void drawPlayerList(MatrixStack matrices, int x, int y) {
-		mc.textRenderer.drawWithShadow(matrices, "Players:", x + 1, y + 1, 0xff0000);
+	public void drawPlayerList(DrawContext matrices, int x, int y) {
+		matrices.drawTextWithShadow(mc.textRenderer, "Players:", x + 1, y + 1, 0xff0000);
 
 		int count = 1;
 		for (Entity e : mc.world.getPlayers().stream()
@@ -356,7 +355,7 @@ public class UI extends Module {
 					((255 - (int) Math.min(dist * 2.1, 255) & 0xFF) << 16) |
 					(((int) Math.min(dist * 4.28, 255) & 0xFF) << 8);
 
-			mc.textRenderer.drawWithShadow(matrices, text, x + 1, y + 1 + count * 10, playerColor);
+			matrices.drawTextWithShadow(mc.textRenderer, text, x + 1, y + 1 + count * 10, playerColor);
 			count++;
 		}
 	}
@@ -367,17 +366,17 @@ public class UI extends Module {
 		return new int[] { 144, 10 };
 	}
 
-	public void drawLagMeter(MatrixStack matrices, int x, int y) {
+	public void drawLagMeter(DrawContext matrices, int x, int y) {
 		long time = System.currentTimeMillis();
 		if (time - lastPacket > 500) {
 			String text = "Server Lagging For: " + String.format(Locale.ENGLISH, "%.2f", (time - lastPacket) / 1000d) + "s";
 
 			int xd = x + 72 - mc.textRenderer.getWidth(text) / 2;
 			switch (getSetting(10).asToggle().getChild(0).asMode().getMode()) {
-				case 0 -> mc.textRenderer.drawWithShadow(matrices, text, xd, y + 1 + Math.min((time - lastPacket - 1200) / 20, 0), 0xd0d0d0);
-				case 1 -> mc.textRenderer.drawWithShadow(matrices, text, xd, y + 1,
+				case 0 -> matrices.drawTextWithShadow(mc.textRenderer, text, xd, (int) (y + 1 + Math.min((time - lastPacket - 1200) / 20, 0)), 0xd0d0d0);
+				case 1 -> matrices.drawTextWithShadow(mc.textRenderer, text, xd, y + 1,
 						(MathHelper.clamp((int) (time - lastPacket - 500) / 3, 5, 255) << 24) | 0xd0d0d0);
-				case 2 -> mc.textRenderer.drawWithShadow(matrices, text, xd, y + 1, 0xd0d0d0);
+				case 2 -> matrices.drawTextWithShadow(mc.textRenderer, text, xd, y + 1, 0xd0d0d0);
 			}
 		}
 	}
@@ -389,59 +388,60 @@ public class UI extends Module {
 		return new int[] { vertical ? 18 : 74, vertical ? 62 : 16 };
 	}
 
-	public void drawArmor(MatrixStack matrices, int x, int y) {
+	// 1.19.4 indexed PlayerInventory.armor (a plain 4-slot list); that field is gone, replaced by the
+	// EntityEquipment system, so armor is now read per-slot via getEquippedStack(EquipmentSlot).
+	private static final EquipmentSlot[] ARMOR_SLOTS = { EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD };
+
+	public void drawArmor(DrawContext matrices, int x, int y) {
 		boolean vertical = getSetting(9).asToggle().getChild(0).asToggle().getState();
 
-		for (int count = 0; count < mc.player.getInventory().armor.size(); count++) {
-			ItemStack is = mc.player.getInventory().armor.get(count);
+		for (int count = 0; count < ARMOR_SLOTS.length; count++) {
+			ItemStack is = mc.player.getEquippedStack(ARMOR_SLOTS[count]);
 
 			if (is.isEmpty())
 				continue;
 
 			int curX = vertical ? x : x + count * 19;
 			int curY = vertical ? y + 47 - count * 16 : y;
-			RenderSystem.enableDepthTest();
-			mc.getItemRenderer().renderInGuiWithOverrides(matrices, is, curX, curY);
+			matrices.drawItem(is, curX, curY);
 
 			int durcolor = is.isDamageable() ? 0xff000000 | MathHelper.hsvToRgb((float) (is.getMaxDamage() - is.getDamage()) / is.getMaxDamage() / 3.0F, 1.0F, 1.0F) : 0;
 
-			matrices.push();
-			matrices.translate(0, 0, /*mc.getItemRenderer().zOffset +*/ 200);
-			
+			// 1.19.4 nudged these overlays forward on the Z axis so they draw above the item icon.
+			// DrawContext's 2D matrix stack has no Z axis; its GUI queue instead layers strictly by
+			// submission order, and these are already submitted after drawItem() above.
 			if (is.getCount() > 1) {
-				matrices.push();
+				matrices.getMatrices().pushMatrix();
 				String s = Integer.toString(is.getCount());
 
-				matrices.translate(curX + 19 - mc.textRenderer.getWidth(s), curY + 9, 0);
-				matrices.scale(0.85f, 0.85f, 1f);
+				matrices.getMatrices().translate(curX + 19 - mc.textRenderer.getWidth(s), curY + 9);
+				matrices.getMatrices().scale(0.85f, 0.85f);
 
-				mc.textRenderer.drawWithShadow(matrices, s, 0, 0, 0xffffff);
-				matrices.pop();
+				matrices.drawTextWithShadow(mc.textRenderer, s, 0, 0, 0xffffff);
+				matrices.getMatrices().popMatrix();
 			}
 
 			if (is.isDamageable()) {
 				int mode = getSetting(9).asToggle().getChild(1).asMode().getMode();
 				if (mode == 0) {
-					matrices.push();
-					matrices.scale(0.75f, 0.75f, 1f);
+					matrices.getMatrices().pushMatrix();
+					matrices.getMatrices().scale(0.75f, 0.75f);
 
 					String dur = Integer.toString(is.getMaxDamage() - is.getDamage());
-					mc.textRenderer.drawWithShadow(
-							matrices, dur, (curX + 7 - mc.textRenderer.getWidth(dur) * 1.333f / 4) * 1.333f, (curY - (vertical ? 2 : 3)) * 1.333f, durcolor);
+					matrices.drawTextWithShadow(mc.textRenderer,
+							dur, (int) ((curX + 7 - mc.textRenderer.getWidth(dur) * 1.333f / 4) * 1.333f), (int) ((curY - (vertical ? 2 : 3)) * 1.333f), durcolor);
 
-					matrices.pop();
+					matrices.getMatrices().popMatrix();
 				} else if (mode == 1) {
 					int barLength = Math.round(13.0F - is.getDamage() * 13.0F / is.getMaxDamage());
-					DrawableHelper.fill(matrices, curX + 2, curY + 13, curX + 15, curY + 15, 0xff000000);
-					DrawableHelper.fill(matrices, curX + 2, curY + 13, curX + 2 + barLength, curY + 14, durcolor);
+					matrices.fill(curX + 2, curY + 13, curX + 15, curY + 15, 0xff000000);
+					matrices.fill(curX + 2, curY + 13, curX + 2 + barLength, curY + 14, durcolor);
 				} else {
 					int barLength = Math.round(12.0F - is.getDamage() * 12.0F / is.getMaxDamage());
-					DrawableHelper.fill(matrices, curX + 15, curY + 2, curX + 17, curY + 14, 0xff000000);
-					DrawableHelper.fill(matrices, curX + 15, curY + 2, curX + 16, curY + 2 + barLength, durcolor);
+					matrices.fill(curX + 15, curY + 2, curX + 17, curY + 14, 0xff000000);
+					matrices.fill(curX + 15, curY + 2, curX + 16, curY + 2 + barLength, durcolor);
 				}
 			}
-			
-			matrices.pop();
 		}
 	}
 
@@ -451,23 +451,18 @@ public class UI extends Module {
 		return new int[] { 155, 53 };
 	}
 
-	public void drawInventory(MatrixStack matrices, int x, int y) {
+	public void drawInventory(DrawContext matrices, int x, int y) {
 		if (getSetting(11).asToggle().getState()) {
-			DrawableHelper.fill(matrices, x + 155, y, x, y + 53,
+			matrices.fill(x + 155, y, x, y + 53,
 					(getSetting(11).asToggle().getChild(0).asSlider().getValueInt() << 24) | 0x212120);
 
-			matrices.push();
 			for (int i = 0; i < 27; i++) {
 				ItemStack itemStack = mc.player.getInventory().getStack(i + 9);
 				int offsetX = x + 1 + (i % 9) * 17;
 				int offsetY = y + 1 + (i / 9) * 17;
-				mc.getItemRenderer().renderInGuiWithOverrides(matrices, itemStack, offsetX, offsetY);
-				mc.getItemRenderer().renderGuiItemOverlay(matrices, mc.textRenderer, itemStack, offsetX, offsetY);
+				matrices.drawItem(itemStack, offsetX, offsetY);
+				matrices.drawStackOverlay(mc.textRenderer, itemStack, offsetX, offsetY);
 			}
-
-			//mc.getItemRenderer().zOffset = 0.0F;
-			RenderSystem.enableDepthTest();
-			matrices.pop();
 		}
 	}
 

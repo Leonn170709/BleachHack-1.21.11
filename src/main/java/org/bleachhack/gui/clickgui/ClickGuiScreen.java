@@ -19,9 +19,11 @@ import org.bleachhack.gui.clickgui.window.ClickGuiWindow.Tooltip;
 import org.bleachhack.gui.window.Window;
 import org.bleachhack.gui.window.WindowScreen;
 
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 
@@ -51,8 +53,8 @@ public abstract class ClickGuiScreen extends WindowScreen {
 		return false;
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-		this.renderBackground(matrices);
+	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+		this.renderBackground(matrices, mouseX, mouseY, delta);
 
 		for (Window w : getWindows()) {
 			if (w instanceof ClickGuiWindow) {
@@ -61,9 +63,6 @@ public abstract class ClickGuiScreen extends WindowScreen {
 		}
 
 		super.render(matrices, mouseX, mouseY, delta);
-
-		matrices.push();
-		matrices.translate(0, 0, 250);
 
 		for (Window w : getWindows()) {
 			if (w instanceof ClickGuiWindow) {
@@ -88,11 +87,11 @@ public abstract class ClickGuiScreen extends WindowScreen {
 
 						int start = tooltipY - lines.size() * 10;
 						for (int l = 0; l < lines.size(); l++) {
-							fill(matrices, tooltip.x, start + (l * 10) - 1,
+							matrices.fill(tooltip.x, start + (l * 10) - 1,
 									tooltip.x + textRenderer.getWidth(lines.get(l)) + 3,
 									start + (l * 10) + 9, 0xff000000);
 
-							textRenderer.drawWithShadow(matrices, lines.get(l), tooltip.x + 2, start + (l * 10), -1);
+							matrices.drawTextWithShadow(textRenderer, lines.get(l), tooltip.x + 2, start + (l * 10), -1);
 						}
 
 						tooltipY -= lines.size() * 10;
@@ -100,22 +99,20 @@ public abstract class ClickGuiScreen extends WindowScreen {
 				}
 			}
 		}
-		
+
 		Window.fill(matrices, width / 2 - 50, -1, width / 2 - 2, 12,
 				mouseX >= width / 2 - 50 && mouseX <= width / 2 - 2 && mouseY >= 0 && mouseY <= 12 ? 0x60b070f0 : 0x60606090);
 		Window.fill(matrices, width / 2 + 2, -1, width / 2 + 50, 12,
 				mouseX >= width / 2 + 2 && mouseX <= width / 2 + 50 && mouseY >= 0 && mouseY <= 12 ? 0x60b070f0 : 0x60606090);
 
-		drawCenteredTextWithShadow(matrices, textRenderer, "Modules", width / 2 - 26, 2, 0xf0f0f0);
-		drawCenteredTextWithShadow(matrices, textRenderer, "UI", width / 2 + 26, 2, 0xf0f0f0);
-		
+		matrices.drawCenteredTextWithShadow(textRenderer, "Modules", width / 2 - 26, 2, 0xf0f0f0);
+		matrices.drawCenteredTextWithShadow(textRenderer, "UI", width / 2 + 26, 2, 0xf0f0f0);
+
 		if (warningOpacity > 3) {
-			drawCenteredTextWithShadow(matrices, textRenderer, "UI not available on the main menu!", width / 2, 17,
+			matrices.drawCenteredTextWithShadow(textRenderer, "UI not available on the main menu!", width / 2, 17,
 					warningOpacity > 255 ? 0xd14a3b : (warningOpacity << 24) | 0xd14a3b);
 			warningOpacity -= 3;
 		}
-
-		matrices.pop();
 
 		lmDown = false;
 		rmDown = false;
@@ -123,13 +120,17 @@ public abstract class ClickGuiScreen extends WindowScreen {
 		mwScroll = 0;
 	}
 
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(Click click, boolean doubleClick) {
+		double mouseX = click.x();
+		double mouseY = click.y();
+		int button = click.button();
+
 		if (button == 0) {
 			if (mouseX >= width / 2 - 50 && mouseX <= width / 2 - 2 && mouseY >= 0 && mouseY <= 12) {
-				client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1f));
+				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1f));
 				tryOpen(ModuleClickGuiScreen.INSTANCE);
 			} else if (mouseX >= width / 2 + 2 && mouseX <= width / 2 + 50 && mouseY >= 0 && mouseY <= 12) {
-				client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1f));
+				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1f));
 				tryOpen(UIClickGuiScreen.INSTANCE);
 			} else {
 				lmDown = true;
@@ -139,23 +140,23 @@ public abstract class ClickGuiScreen extends WindowScreen {
 			rmDown = true;
 		}
 
-		return super.mouseClicked(mouseX, mouseY, button);
+		return super.mouseClicked(click, doubleClick);
 	}
 
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
-		if (button == 0)
+	public boolean mouseReleased(Click click) {
+		if (click.button() == 0)
 			lmHeld = false;
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(click);
 	}
 
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		keyDown = keyCode;
-		return super.keyPressed(keyCode, scanCode, modifiers);
+	public boolean keyPressed(KeyInput input) {
+		keyDown = input.key();
+		return super.keyPressed(input);
 	}
 
-	public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-		mwScroll = (int) amount;
-		return super.mouseScrolled(mouseX, mouseY, amount);
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+		mwScroll = (int) verticalAmount;
+		return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
 	}
 	
 	private void tryOpen(Screen screen) {

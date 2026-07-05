@@ -10,21 +10,21 @@ package org.bleachhack.event.events;
 
 import org.bleachhack.event.Event;
 
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 
 public class EventRenderCrosshair extends Event {
 
-	private MatrixStack matrices;
+	private DrawContext matrices;
 
-	public EventRenderCrosshair(MatrixStack matrices) {
+	public EventRenderCrosshair(DrawContext matrices) {
 		this.setMatrices(matrices);
 	}
 
-	public MatrixStack getMatrices() {
+	public DrawContext getMatrices() {
 		return matrices;
 	}
 
-	public void setMatrices(MatrixStack matrices) {
+	public void setMatrices(DrawContext matrices) {
 		this.matrices = matrices;
 	}
 }

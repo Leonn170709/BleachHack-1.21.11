@@ -4,8 +4,8 @@ import org.bleachhack.gui.window.Window;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.sound.SoundEvents;
 
 import net.minecraft.text.Text;
@@ -26,7 +26,7 @@ public class WindowCheckboxWidget extends WindowWidget {
 	}
 
 	@Override
-	public void render(MatrixStack matrices, int windowX, int windowY, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int windowX, int windowY, int mouseX, int mouseY) {
 		super.render(matrices, windowX, windowY, mouseX, mouseY);
 
 		TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
@@ -38,11 +38,11 @@ public class WindowCheckboxWidget extends WindowWidget {
 		Window.fill(matrices, x, y, x + 11, y + 11, color);
 
 		if (checked) {
-			textRenderer.draw(matrices, "\u2714", x + 2, y + 2, 0xffeeff);
+			matrices.drawText(textRenderer, "\u2714", x + 2, y + 2, 0xffeeff, false);
 			//fill(matrix, x + 3, y + 3, x + 7, y + 7, 0xffffffff);
 		}
 
-		textRenderer.drawWithShadow(matrices, text, x + 15, y + 2, 0xc0c0c0);
+		matrices.drawTextWithShadow(textRenderer, text, x + 15, y + 2, 0xc0c0c0);
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class WindowCheckboxWidget extends WindowWidget {
 
 		if (mouseX >= windowX + x1 && mouseX <= windowX + x1 + 10 && mouseY >= windowY + y1 && mouseY <= windowY + y1 + 10) {
 			checked = !checked;
-			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 		}
 	}
 }

@@ -8,18 +8,17 @@
  */
 package org.bleachhack.gui;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.Direction.Axis;
 import net.minecraft.util.math.MathHelper;
@@ -62,7 +61,7 @@ public class EntityMenuScreen extends Screen {
 		double y = this.client.getWindow().getHeight() / 2d;
 
 		KeyBinding.unpressAll();
-		InputUtil.setCursorParameters(this.client.getWindow().getHandle(), GLFW.GLFW_CURSOR_HIDDEN, x, y);
+		InputUtil.setCursorParameters(this.client.getWindow(), GLFW.GLFW_CURSOR_HIDDEN, x, y);
 	}
 
 	public void tick() {
@@ -82,14 +81,14 @@ public class EntityMenuScreen extends Screen {
 			String message = ModuleManager.getModule(EntityMenu.class)
 					.interactions.getValue(focusedString)
 					.replaceAll("%name%", entity.getDisplayName().getString())
-					.replaceAll("%uuid%", entity.getEntityName())
+					.replaceAll("%uuid%", entity.getUuidAsString())
 					.replaceAll("%health%", String.valueOf((int) entity.getHealth()))
 					.replaceAll("%x%", coordFormat.format(entity.getX()))
 					.replaceAll("%y%", coordFormat.format(entity.getY()))
 					.replaceAll("%z%", coordFormat.format(entity.getZ()));
 
 			if (message.startsWith(">suggest ")) {
-				client.setScreen(new ChatScreen(message.substring(9)));
+				client.setScreen(new ChatScreen(message.substring(9), false));
 			} else if (message.startsWith(">url ")) {
 				try {
 					Util.getOperatingSystem().open(new URI(message.substring(5)));
@@ -112,34 +111,32 @@ public class EntityMenuScreen extends Screen {
 		return false;
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-		// Draw entity
-		RenderSystem.setShader(GameRenderer::getPositionTexProgram);
-		RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-		RenderSystem.setShaderTexture(0, InventoryScreen.BACKGROUND_TEXTURE);
+	// The crosshair used vanilla's GUI icon atlas via an implicit bound-texture draw + a manual
+	// inverting blend function; both moved into RenderPipelines.CROSSHAIR + a dedicated texture
+	// Identifier (see InGameHud's own crosshair render code), so the manual GlStateManager blend
+	// setup is no longer needed - the pipeline bakes it in.
+	private static final Identifier CROSSHAIR_TEXTURE = Identifier.ofVanilla("hud/crosshair");
 
+	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+		// Draw entity
 		int entitySize = (int) (120 / Boxes.getCornerLength(entity.getBoundingBox()));
 		int entityHeight = entitySize / 2 - (int) (10 / Boxes.getAxisLength(entity.getBoundingBox(), Axis.Y));
+		int cx = width / 2;
+		int cy = height / 2 + entityHeight;
 		InventoryScreen.drawEntity(matrices,
-				width / 2, height / 2 + entityHeight,
-				entitySize,
-				(float) (width / 2) - mouseX, (float) (height / 2 + entityHeight - 45) - mouseY,
+				cx - entitySize, cy - entitySize, cx + entitySize, cy + entitySize,
+				entitySize, 0.0625f, mouseX, mouseY,
 				entity);
 
 		// Fake crosshair
-		RenderSystem.setShaderTexture(0, GUI_ICONS_TEXTURE);
-		RenderSystem.enableBlend();
-		RenderSystem.blendFuncSeparate(
-				GlStateManager.SrcFactor.ONE_MINUS_DST_COLOR, GlStateManager.DstFactor.ONE_MINUS_SRC_COLOR,
-				GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ZERO);
-		drawTexture(matrices, crosshairX - 8, crosshairY - 8, 0, 0, 15, 15);
+		matrices.drawGuiTexture(RenderPipelines.CROSSHAIR, CROSSHAIR_TEXTURE, crosshairX - 8, crosshairY - 8, 15, 15);
 
 		drawDots(matrices, (int) (Math.min(height, width) / 2 * 0.75), mouseX, mouseY);
 
-		matrices.push();
-		matrices.scale(2.5f, 2.5f, 1f);
-		drawCenteredTextWithShadow(matrices, textRenderer, entity.getDisplayName().getString() /*"Interaction Screen"*/, width / 5, 5, 0xFFFFFFFF);
-		matrices.pop();
+		matrices.getMatrices().pushMatrix();
+		matrices.getMatrices().scale(2.5f, 2.5f);
+		matrices.drawCenteredTextWithShadow(textRenderer, entity.getDisplayName().getString() /*"Interaction Screen"*/, width / 5, 5, 0xFFFFFFFF);
+		matrices.getMatrices().popMatrix();
 
 		Vector2 center = new Vector2(width / 2, height / 2);
 		Vector2 mouse = new Vector2(mouseX, mouseY).subtract(center).normalize();
@@ -158,7 +155,7 @@ public class EntityMenuScreen extends Screen {
 		super.render(matrices, mouseX, mouseY, delta);
 	}
 
-	private void drawDots(MatrixStack matrices, int radius, int mouseX, int mouseY) {
+	private void drawDots(DrawContext matrices, int radius, int mouseX, int mouseY) {
 		MutablePairList<String, String> map = ModuleManager.getModule(EntityMenu.class).interactions;
 		List<Vector2> pointList = new ArrayList<>();
 		String[] cache = new String[map.size()];
@@ -194,40 +191,40 @@ public class EntityMenuScreen extends Screen {
 		}
 	}
 
-	private void drawRect(MatrixStack matrices, int startX, int startY, int width, int height, int colorInner,int colorOuter) {
-		drawHorizontalLine(matrices, startX, startX + width, startY, colorOuter);
-		drawHorizontalLine(matrices, startX, startX + width, startY + height, colorOuter);
-		drawVerticalLine(matrices, startX, startY, startY + height, colorOuter);
-		drawVerticalLine(matrices, startX + width, startY, startY + height, colorOuter);
-		fill(matrices, startX + 1, startY + 1, startX + width, startY + height, colorInner);
+	private void drawRect(DrawContext matrices, int startX, int startY, int width, int height, int colorInner,int colorOuter) {
+		matrices.drawHorizontalLine(startX, startX + width, startY, colorOuter);
+		matrices.drawHorizontalLine(startX, startX + width, startY + height, colorOuter);
+		matrices.drawVerticalLine(startX, startY, startY + height, colorOuter);
+		matrices.drawVerticalLine(startX + width, startY, startY + height, colorOuter);
+		matrices.fill(startX + 1, startY + 1, startX + width, startY + height, colorInner);
 	}
 
-	private void drawTextField(MatrixStack matrices, int x, int y, String text) {
+	private void drawTextField(DrawContext matrices, int x, int y, String text) {
 		if (x >= width / 2) {
 			drawRect(matrices, x + 10, y - 8, textRenderer.getWidth(text) + 3, 15, 0x80808080, 0xFF000000);
-			drawTextWithShadow(matrices, textRenderer, text, x + 12, y - 4, 0xFFFFFFFF);
+			matrices.drawTextWithShadow(textRenderer, text, x + 12, y - 4, 0xFFFFFFFF);
 		} else {
 			drawRect(matrices, x - 14 - textRenderer.getWidth(text), y - 8, textRenderer.getWidth(text) + 3, 15, 0x80808080, 0xFF000000);
-			drawTextWithShadow(matrices, textRenderer, text, x - 12 - textRenderer.getWidth(text), y - 4, 0xFFFFFFFF);
+			matrices.drawTextWithShadow(textRenderer, text, x - 12 - textRenderer.getWidth(text), y - 4, 0xFFFFFFFF);
 		}
 	}
 
 	// Literally drawing it in code
-	private void drawDot(MatrixStack matrices, int centerX, int centerY, int colorInner) {
+	private void drawDot(DrawContext matrices, int centerX, int centerY, int colorInner) {
 		// Black background
-		fill(matrices, centerX - 1, centerY - 5, centerX + 2, centerY + 6, 0xff000000);
-		fill(matrices, centerX - 3, centerY - 4, centerX + 4, centerY + 5, 0xff000000);
-		fill(matrices, centerX - 4, centerY - 3, centerX + 5, centerY + 4, 0xff000000);
-		fill(matrices, centerX - 5, centerY - 1, centerX + 6, centerY + 2, 0xff000000);
+		matrices.fill(centerX - 1, centerY - 5, centerX + 2, centerY + 6, 0xff000000);
+		matrices.fill(centerX - 3, centerY - 4, centerX + 4, centerY + 5, 0xff000000);
+		matrices.fill(centerX - 4, centerY - 3, centerX + 5, centerY + 4, 0xff000000);
+		matrices.fill(centerX - 5, centerY - 1, centerX + 6, centerY + 2, 0xff000000);
 
 		// Fill
-		fill(matrices, centerX - 1, centerY - 4, centerX + 2, centerY + 5, colorInner);
-		fill(matrices, centerX - 3, centerY - 3, centerX + 4, centerY + 4, colorInner);
-		fill(matrices, centerX - 4, centerY - 1, centerX + 5, centerY + 2, colorInner);
+		matrices.fill(centerX - 1, centerY - 4, centerX + 2, centerY + 5, colorInner);
+		matrices.fill(centerX - 3, centerY - 3, centerX + 4, centerY + 4, colorInner);
+		matrices.fill(centerX - 4, centerY - 1, centerX + 5, centerY + 2, colorInner);
 
 		// Light overlay
-		fill(matrices, centerX - 1, centerY - 3, centerX + 1, centerY - 2, 0x80ffffff);
-		fill(matrices, centerX - 2, centerY - 2, centerX - 1, centerY - 1, 0x80ffffff);
+		matrices.fill(centerX - 1, centerY - 3, centerX + 1, centerY - 2, 0x80ffffff);
+		matrices.fill(centerX - 2, centerY - 2, centerX - 1, centerY - 1, 0x80ffffff);
 		//fill(matrix, centerX - 3, centerY - 1, centerX - 2, centerY, 0x80ffffff);
 	}
 }

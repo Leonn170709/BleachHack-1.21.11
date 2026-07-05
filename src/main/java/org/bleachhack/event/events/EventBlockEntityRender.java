@@ -11,62 +11,36 @@ package org.bleachhack.event.events;
 import org.bleachhack.event.Event;
 
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.util.math.MatrixStack;
 
 public class EventBlockEntityRender extends Event {
 
 	public static class Single extends EventBlockEntityRender {
 
 		protected BlockEntity blockEntity;
-		protected MatrixStack matrices;
-		protected VertexConsumerProvider vertex;
 
 		public BlockEntity getBlockEntity() {
 			return blockEntity;
 		}
 
-		public MatrixStack getMatrices() {
-			return matrices;
-		}
-
-		public VertexConsumerProvider getVertex() {
-			return vertex;
-		}
-
+		// 1.21.11: block-entity rendering moved to the RenderState/OrderedRenderCommandQueue
+		// architecture (see MixinBlockEntityRenderDispatcher notes) - this now fires during
+		// WorldRenderer's render-state extraction pass, before any MatrixStack/VertexConsumerProvider
+		// exists for this block entity, so only the block entity itself can be substituted/cancelled.
 		public static class Pre extends Single {
 
-			public Pre(BlockEntity blockEntity, MatrixStack matrices, VertexConsumerProvider vertex) {
+			public Pre(BlockEntity blockEntity) {
 				this.blockEntity = blockEntity;
-				this.matrices = matrices;
-				this.vertex = vertex;
 			}
 
 			public void setBlockEntity(BlockEntity blockEntity) {
 				this.blockEntity = blockEntity;
 			}
-
-			public void setMatrices(MatrixStack matrices) {
-				this.matrices = matrices;
-			}
-
-			public void setVertex(VertexConsumerProvider vertex) {
-				this.vertex = vertex;
-			}
-		}
-
-		public static class Post extends Single {
-			public Post(BlockEntity blockEntity, MatrixStack matrices, VertexConsumerProvider vertexConsumers) {
-				this.blockEntity = blockEntity;
-				this.matrices = matrices;
-				this.vertex = vertexConsumers;
-			}
 		}
 	}
 
-	public static class PreAll extends EventEntityRender {
+	public static class PreAll extends EventBlockEntityRender {
 	}
 
-	public static class PostAll extends EventEntityRender {
+	public static class PostAll extends EventBlockEntityRender {
 	}
 }

@@ -2,8 +2,7 @@ package org.bleachhack.gui.window.widget;
 
 import org.bleachhack.gui.window.Window;
 
-import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.math.MathHelper;
 
 public class WindowScrollbarWidget extends WindowWidget {
@@ -26,7 +25,7 @@ public class WindowScrollbarWidget extends WindowWidget {
 	}
 
 	@Override
-	public void render(MatrixStack matrices, int windowX, int windowY, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int windowX, int windowY, int mouseX, int mouseY) {
 		super.render(matrices, windowX, windowY, mouseX, mouseY);
 
 		int[] pos = getCurrentPos(windowX, windowY);
@@ -40,9 +39,9 @@ public class WindowScrollbarWidget extends WindowWidget {
 
 			int middleY = pos[1] + (int) (pos[3] / 2d);
 
-			DrawableHelper.fill(matrices, pos[0] + 3, middleY - 3, pos[0] + 7, middleY - 2, 0xff7060ff);
-			DrawableHelper.fill(matrices, pos[0] + 3, middleY, pos[0] + 7, middleY + 1, 0xff7060ff);
-			DrawableHelper.fill(matrices, pos[0] + 3, middleY + 3, pos[0] + 7, middleY + 4, 0xff7060ff);
+			matrices.fill(pos[0] + 3, middleY - 3, pos[0] + 7, middleY - 2, 0xff7060ff);
+			matrices.fill(pos[0] + 3, middleY, pos[0] + 7, middleY + 1, 0xff7060ff);
+			matrices.fill(pos[0] + 3, middleY + 3, pos[0] + 7, middleY + 4, 0xff7060ff);
 
 			if (buttonDown) {
 				moveScrollbar(mouseY - lastY);

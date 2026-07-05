@@ -20,9 +20,8 @@ import org.bleachhack.module.mods.ClickGui;
 import org.bleachhack.setting.module.ModuleSetting;
 
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 import net.minecraft.sound.SoundEvents;
 
@@ -49,7 +48,7 @@ public class ModuleWindow extends ClickGuiWindow {
 		y2 = getHeight();
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int mouseX, int mouseY) {
 		tooltip = null;
 		int x = x1 + 1;
 		int y = y1 + 13;
@@ -65,15 +64,15 @@ public class ModuleWindow extends ClickGuiWindow {
 		int curY = 0;
 		for (Entry<Module, Boolean> m : mods.entrySet()) {
 			if (mouseOver(x, y + curY, x + len, y + 12 + curY)) {
-				DrawableHelper.fill(matrices, x, y + curY, x + len, y + 12 + curY, 0x70303070);
+				matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x70303070);
 			}
 
 			// If they match: Module gets marked red
 			if (searchedModules != null && searchedModules.contains(m.getKey()) && ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle().getState()) {
-				DrawableHelper.fill(matrices, x, y + curY, x + len, y + 12 + curY, 0x50ff0000);
+				matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x50ff0000);
 			}
 
-			textRend.drawWithShadow(matrices, textRend.trimToWidth(m.getKey().getName(), len),
+			matrices.drawTextWithShadow(textRend, textRend.trimToWidth(m.getKey().getName(), len),
 					x + 2, y + 2 + curY, m.getKey().isEnabled() ? 0x70efe0 : 0xc0c0c0);
 
 			// Set which module settings show on
@@ -85,7 +84,7 @@ public class ModuleWindow extends ClickGuiWindow {
 				if (rmDown)
 					mods.replace(m.getKey(), !m.getValue());
 				if (lmDown || rmDown)
-					mc.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+					mc.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 			}
 
 			curY += 12;
@@ -99,7 +98,7 @@ public class ModuleWindow extends ClickGuiWindow {
 						tooltip = s.getTooltip(this, x + 1, y + curY, len - 1);
 					}
 
-					DrawableHelper.fill(matrices, x + 1, y + curY, x + 2, y + curY + s.getHeight(len), 0xff8070b0);
+					matrices.fill(x + 1, y + curY, x + 2, y + curY + s.getHeight(len), 0xff8070b0);
 
 					curY += s.getHeight(len);
 				}

@@ -10,36 +10,29 @@ package org.bleachhack.event.events;
 
 import org.bleachhack.event.Event;
 
-import net.minecraft.client.util.math.MatrixStack;
-
 public class EventWorldRender extends Event {
 
 	protected float partialTicks;
-	protected MatrixStack matrices;
-	
+
+	// 1.21.11's WorldRenderer.render(...) no longer takes/builds a single top-level MatrixStack (see
+	// task #4 notes) - nothing subscribed to getMatrices() anyway, so it's dropped rather than faked.
 	public static class Pre extends EventWorldRender {
 
-		public Pre(float partialTicks, MatrixStack matrices) {
+		public Pre(float partialTicks) {
 			this.partialTicks = partialTicks;
-			this.matrices = matrices;
 		}
-		
+
 	}
-	
+
 	public static class Post extends EventWorldRender {
 
-		public Post(float partialTicks, MatrixStack matrices) {
+		public Post(float partialTicks) {
 			this.partialTicks = partialTicks;
-			this.matrices = matrices;
 		}
-		
+
 	}
 
 	public float getPartialTicks() {
 		return partialTicks;
-	}
-	
-	public MatrixStack getMatrices() {
-		return matrices;
 	}
 }

@@ -23,9 +23,10 @@ import org.bleachhack.util.world.WorldUtils;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.FernBlock;
+import net.minecraft.block.ShortPlantBlock;
 import net.minecraft.block.TallPlantBlock;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.BlockRenderLayer;
+import net.minecraft.client.render.VertexConsumer;
 
 public class Xray extends Module {
 
@@ -112,14 +113,14 @@ public class Xray extends Module {
 		if (!getSetting(2).asList(Block.class).contains(event.getState().getBlock())) {
 			if (getSetting(1).asToggle().getState()) {
 				if (getSetting(1).asToggle().getChild(1).asToggle().getState()
-						&& (event.getState().getBlock() instanceof FernBlock
+						&& (event.getState().getBlock() instanceof ShortPlantBlock
 								|| event.getState().getBlock() instanceof TallPlantBlock
 								|| WorldUtils.getTopBlockIgnoreLeaves(event.getPos().getX(), event.getPos().getZ()) == event.getPos().getY())) {
 					event.setCancelled(true);
 					return;
 				}
 
-				event.getVertexConsumer().fixedColor(-1, -1, -1, getSetting(1).asToggle().getChild(0).asSlider().getValueInt());
+				event.setVertexConsumer(new FixedAlphaVertexConsumer(event.getVertexConsumer(), getSetting(1).asToggle().getChild(0).asSlider().getValueInt()));
 			} else {
 				event.setCancelled(true);
 			}
@@ -129,7 +130,7 @@ public class Xray extends Module {
 	@BleachSubscribe
 	public void onRenderBlockLayer(EventRenderBlock.Layer event) {
 		if (getSetting(1).asToggle().getState() && !getSetting(2).asList(Block.class).contains(event.getState().getBlock())) {
-			event.setLayer(RenderLayer.getTranslucent());
+			event.setLayer(BlockRenderLayer.TRANSLUCENT);
 		}
 	}
 
@@ -137,6 +138,60 @@ public class Xray extends Module {
 	public void onRenderFluid(EventRenderFluid event) {
 		if (!getSetting(0).asToggle().getState()) {
 			event.setCancelled(true);
+		}
+	}
+
+	// 1.21.11 removed BufferBuilder's stateful fixedColor()/BufferVertexConsumer trick this module
+	// used to force block transparency - this wrapping decorator (swapped in via
+	// EventRenderBlock.Tesselate#setVertexConsumer) is the direct replacement: same effect, just an
+	// immutable wrapper instead of an in-place field flip.
+	private static class FixedAlphaVertexConsumer implements VertexConsumer {
+		private final VertexConsumer delegate;
+		private final int alpha;
+
+		private FixedAlphaVertexConsumer(VertexConsumer delegate, int alpha) {
+			this.delegate = delegate;
+			this.alpha = alpha;
+		}
+
+		@Override
+		public VertexConsumer vertex(float x, float y, float z) {
+			return delegate.vertex(x, y, z);
+		}
+
+		@Override
+		public VertexConsumer color(int red, int green, int blue, int alpha) {
+			return delegate.color(red, green, blue, this.alpha);
+		}
+
+		@Override
+		public VertexConsumer color(int argb) {
+			return delegate.color((argb & 0xFFFFFF) | (this.alpha << 24));
+		}
+
+		@Override
+		public VertexConsumer texture(float u, float v) {
+			return delegate.texture(u, v);
+		}
+
+		@Override
+		public VertexConsumer overlay(int u, int v) {
+			return delegate.overlay(u, v);
+		}
+
+		@Override
+		public VertexConsumer light(int u, int v) {
+			return delegate.light(u, v);
+		}
+
+		@Override
+		public VertexConsumer normal(float x, float y, float z) {
+			return delegate.normal(x, y, z);
+		}
+
+		@Override
+		public VertexConsumer lineWidth(float width) {
+			return delegate.lineWidth(width);
 		}
 	}
 }

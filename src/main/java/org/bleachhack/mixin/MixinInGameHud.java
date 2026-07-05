@@ -19,8 +19,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
 
 @Mixin(InGameHud.class)
@@ -29,12 +30,13 @@ public class MixinInGameHud {
 	@Unique private boolean bypassRenderOverlay = false;
 	@Unique private boolean bypassRenderCrosshair = false;
 
-	@Shadow private void renderOverlay(MatrixStack matrices, Identifier texture, float opacity) {}
-	@Shadow private void renderCrosshair(MatrixStack matrices) {}
+	@Shadow private void renderOverlay(DrawContext matrices, Identifier texture, float opacity) {}
+	// 1.21.11 added a RenderTickCounter parameter to renderCrosshair that wasn't there before.
+	@Shadow private void renderCrosshair(DrawContext matrices, RenderTickCounter tickCounter) {}
 
 	@Inject(method = "render", at = @At("RETURN"), cancellable = true)
-	private void render(MatrixStack matrixStack, float tickDelta, CallbackInfo info) {
-		EventRenderInGameHud event = new EventRenderInGameHud(matrixStack);
+	private void render(DrawContext drawContext, RenderTickCounter tickCounter, CallbackInfo info) {
+		EventRenderInGameHud event = new EventRenderInGameHud(drawContext);
 		BleachHack.eventBus.post(event);
 
 		if (event.isCancelled()) {
@@ -43,7 +45,7 @@ public class MixinInGameHud {
 	}
 
 	@Inject(method = "renderOverlay", at = @At("HEAD"), cancellable = true)
-	private void renderOverlay(MatrixStack matrices, Identifier texture, float opacity, CallbackInfo ci) {
+	private void renderOverlay(DrawContext matrices, Identifier texture, float opacity, CallbackInfo ci) {
 		if (!bypassRenderOverlay) {
 			EventRenderOverlay event = new EventRenderOverlay(matrices, texture, opacity);
 			BleachHack.eventBus.post(event);
@@ -60,14 +62,14 @@ public class MixinInGameHud {
 
 
 	@Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
-	private void renderCrosshair(MatrixStack matrices, CallbackInfo callback) {
+	private void renderCrosshair(DrawContext matrices, RenderTickCounter tickCounter, CallbackInfo callback) {
 		if (!bypassRenderCrosshair) {
 			EventRenderCrosshair event = new EventRenderCrosshair(matrices);
 			BleachHack.eventBus.post(event);
 
 			if (!event.isCancelled()) {
 				bypassRenderCrosshair = true;
-				renderCrosshair(event.getMatrices());
+				renderCrosshair(event.getMatrices(), tickCounter);
 				bypassRenderCrosshair = false;
 			}
 

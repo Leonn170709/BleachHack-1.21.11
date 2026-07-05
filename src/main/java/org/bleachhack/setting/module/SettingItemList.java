@@ -15,10 +15,8 @@ import java.util.stream.Collectors;
 import net.minecraft.registry.Registries;
 import org.bleachhack.setting.SettingDataHandlers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -41,21 +39,20 @@ public class SettingItemList extends SettingList<Item> {
 	}
 
 	@Override
-	public void renderItem(MinecraftClient mc, MatrixStack matrices, Item item, int x, int y, int w, int h) {
+	public void renderItem(MinecraftClient mc, DrawContext matrices, Item item, int x, int y, int w, int h) {
 		if (item == null || item == Items.AIR) {
 			super.renderItem(mc, matrices, item, x, y, w, h);
 		} else {
-			RenderSystem.getModelViewStack().push();
+			matrices.getMatrices().pushMatrix();
 
 			float scale = (h - 2) / 16f;
 			float offset = 1f / scale;
 
-			RenderSystem.getModelViewStack().scale(scale, scale, 1f);
+			matrices.getMatrices().scale(scale, scale);
 
-			mc.getItemRenderer().renderInGuiWithOverrides(matrices, new ItemStack(item), (int) ((x + 1) * offset), (int) ((y + 1) * offset));
+			matrices.drawItem(new ItemStack(item), (int) ((x + 1) * offset), (int) ((y + 1) * offset));
 
-			RenderSystem.getModelViewStack().pop();
-			RenderSystem.applyModelViewMatrix();
+			matrices.getMatrices().popMatrix();
 		}
 	}
 

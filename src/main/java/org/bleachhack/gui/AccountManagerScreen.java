@@ -12,16 +12,16 @@ import com.google.common.io.Resources;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.exceptions.AuthenticationException;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.util.DefaultSkinHelper;
-import net.minecraft.client.util.Session;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.session.Session;
+import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.sound.SoundEvents;
@@ -41,6 +41,7 @@ import org.bleachhack.util.io.BleachFileMang;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -140,19 +141,19 @@ public class AccountManagerScreen extends WindowScreen {
 				() -> openAddAccWindow(AccountType.MICROSOFT, "Microsoft", new ItemStack(Items.PURPLE_GLAZED_TERRACOTTA))));
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-		this.renderBackground(matrices);
+	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+		this.renderBackground(matrices, mouseX, mouseY, delta);
 
-		textRenderer.drawWithShadow(matrices, "Fabric: " + FabricLoader.getInstance().getModContainer("fabricloader").get().getMetadata().getVersion().getFriendlyString(),
+		matrices.drawTextWithShadow(textRenderer, "Fabric: " + FabricLoader.getInstance().getModContainer("fabricloader").get().getMetadata().getVersion().getFriendlyString(),
 				4, height - 30, -1);
-		textRenderer.drawWithShadow(matrices, "Minecraft: " + SharedConstants.getGameVersion().getName(), 4, height - 20, -1);
-		textRenderer.drawWithShadow(matrices, "Logged in as: \u00a7a" + client.getSession().getUsername(), 4, height - 10, -1);
+		matrices.drawTextWithShadow(textRenderer, "Minecraft: " + SharedConstants.getGameVersion().name(), 4, height - 20, -1);
+		matrices.drawTextWithShadow(textRenderer, "Logged in as: \u00a7a" + client.getSession().getUsername(), 4, height - 10, -1);
 
 		hovered = -1;
 		super.render(matrices, mouseX, mouseY, delta);
 	}
 
-	public void onRenderWindow(MatrixStack matrices, int window, int mouseX, int mouseY) {
+	public void onRenderWindow(DrawContext matrices, int window, int mouseX, int mouseY) {
 		super.onRenderWindow(matrices, window, mouseX, mouseY);
 
 		if (window == 0) {
@@ -177,22 +178,22 @@ public class AccountManagerScreen extends WindowScreen {
 					hovered = c;
 			}
 
-			fill(matrices, x + listW, y + 12, x + listW + 1, y + h - 1, 0xff606090);
+			matrices.fill(x + listW, y + 12, x + listW + 1, y + h - 1, 0xff606090);
 		}
 	}
 
-	private void drawEntry(MatrixStack matrices, Account acc, int x, int y, int width, int height, int color) {
+	private void drawEntry(DrawContext matrices, Account acc, int x, int y, int width, int height, int color) {
 		Window.fill(matrices, x, y, x + width, y + height, color);
 
 		if (acc.bindSkin()) {
 			double pixelSize = (height - 6) / 8d;
-			DrawableHelper.fill(matrices,
+			matrices.fill(
 					x + 2, y + 2,
 					x + height - 2, y + height - 2,
 					0x60d86ceb);
-			DrawableHelper.drawTexture(matrices,
+			matrices.drawTexture(RenderPipelines.GUI_TEXTURED, acc.getSkinTexture(),
 					x + 3, y + 3,
-					(int) (pixelSize * 8), (int) (pixelSize * 8),
+					(float) (pixelSize * 8), (float) (pixelSize * 8),
 					(int) (pixelSize * 8), (int) (pixelSize * 8),
 					(int) (pixelSize * 64), (int) (pixelSize * 64));
 		}
@@ -200,32 +201,32 @@ public class AccountManagerScreen extends WindowScreen {
 		boolean extendText = acc.bindCape();
 		if (extendText) {
 			double pixelSize = ((height - 6) / 10d) * 0.625;
-			DrawableHelper.fill(matrices,
+			matrices.fill(
 					x + height - 1, y + 2,
 					(int) (x + height + pixelSize * 10 + 1), y + height - 2,
 					0x60d86ceb);
-			DrawableHelper.drawTexture(matrices,
+			matrices.drawTexture(RenderPipelines.GUI_TEXTURED, acc.getCapeTexture(),
 					x + height, y + 3,
-					(int) Math.ceil(pixelSize), (int) Math.ceil(pixelSize),
+					(float) Math.ceil(pixelSize), (float) Math.ceil(pixelSize),
 					(int) (pixelSize * 10), (int) (pixelSize * 16),
 					(int) (pixelSize * 64), (int) (pixelSize * 32));
 		}
 
 		double pixelSize = ((height - 6) / 10d) * 0.625;
-		textRenderer.drawWithShadow(matrices, "\u00a77Name: " + acc.username,
+		matrices.drawTextWithShadow(textRenderer, "\u00a77Name: " + acc.username,
 				extendText ? (int) (x + height + pixelSize * 10 + 3) : x + height, y + 4, -1);
-		textRenderer.drawWithShadow(matrices,
+		matrices.drawTextWithShadow(textRenderer,
 				(acc.type == AccountType.NO_AUTH ? "\u00a7eNo Auth" : acc.type == AccountType.MOJANG ? "\u00a7aMojang" : "\u00a7bMicrosoft"),
 				extendText ? (int) (x + height + pixelSize * 10 + 3) : x + height, y + height - 11, -1);
 
 		if (acc.type != AccountType.NO_AUTH) {
-			textRenderer.drawWithShadow(matrices,
+			matrices.drawTextWithShadow(textRenderer,
 					(acc.success == 0 ? "\u00a76?" : acc.success == 1 ? "\u00a7cx" : "\u00a7a+"),
 					x + width - 10, y + height - 11, -1);
 		}
 	}
 
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(Click click, boolean doubleClick) {
 		if (hovered >= 0 && hovered < accounts.size()) {
 			if (selected >= 0 && selected < accounts.size()) {
 				for (int i = 0; i < textFieldWidgets.size(); i++) {
@@ -235,10 +236,10 @@ public class AccountManagerScreen extends WindowScreen {
 
 			selected = hovered;
 			updateRightside();
-			client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+			client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 		}
 
-		return super.mouseClicked(mouseX, mouseY, button);
+		return super.mouseClicked(click, doubleClick);
 	}
 
 	private void saveAccounts() {
@@ -289,7 +290,7 @@ public class AccountManagerScreen extends WindowScreen {
 			Account account = new Account(type, 0, null, null, tf.stream().map(t -> t.textField.getText()).toArray(String[]::new));
 			try {
 				Session session = account.getSesson();
-				account.uuid = session.getUuid();
+				account.uuid = session.getUuidOrNull().toString();
 				account.username = session.getUsername();
 				addAccount(account);
 				getWindow(2).closed = true;
@@ -340,17 +341,15 @@ public class AccountManagerScreen extends WindowScreen {
 			try {
 				Session session = account.getSesson();
 
-				account.uuid = session.getUuid();
+				account.uuid = session.getUuidOrNull().toString();
 				account.username = session.getUsername();
 
-				account.textures.clear();
-				client.getSkinProvider().loadSkin(session.getProfile(), (type, identifier, minecraftProfileTexture) -> account.textures.put(type, identifier), true);
+				GameProfile profile = new GameProfile(session.getUuidOrNull(), account.username);
+				account.skinTextures = client.getSkinProvider().supplySkinTextures(profile, false);
 			} catch (AuthenticationException ignored) { }
 		} else {
 			GameProfile profile = new GameProfile(UUID.fromString(account.uuid), account.username);
-
-			account.textures.clear();
-			client.getSkinProvider().loadSkin(profile, (type, identifier, minecraftProfileTexture) -> account.textures.put(type, identifier), true);
+			account.skinTextures = client.getSkinProvider().supplySkinTextures(profile, false);
 		}
 
 		for (int i = 0; i <= accounts.size(); i++) {
@@ -372,7 +371,10 @@ public class AccountManagerScreen extends WindowScreen {
 		// 0 = ?, 1 = no, 2 = yes
 		public int success;
 
-		public Map<Type, Identifier> textures = new EnumMap<>(Type.class);
+		// 1.21.11 replaced the callback-based Type->Identifier skin/cape lookup with a single
+		// Supplier<SkinTextures> (see PlayerSkinProvider.supplySkinTextures) - it's backed by the same
+		// cache internally, so calling .get() fresh each render is cheap and always current.
+		public Supplier<SkinTextures> skinTextures;
 
 		public static Account deserialize(String[] data) {
 			try {
@@ -409,9 +411,10 @@ public class AccountManagerScreen extends WindowScreen {
 				Session session = getSesson();
 				MinecraftClient.getInstance().session = session;
 
-				if (!session.getUuid().equals(NO_UUID))
-					MinecraftClient.getInstance().getSessionProperties().clear();
-
+				// 1.19.4 also cleared MinecraftClient's cached session properties here so a switched-to
+				// real account picked up its skin immediately; getSessionProperties() was removed with no
+				// direct replacement. This is a minor staleness risk only (skins still resolve normally
+				// through the skin provider's own cache on the next lookup), not a functional loss.
 				return null;
 			} catch (AuthenticationException e) {
 				return e;
@@ -423,22 +426,19 @@ public class AccountManagerScreen extends WindowScreen {
 		}
 
 		public boolean bindSkin() {
-			if (textures.containsKey(Type.SKIN)) {
-				RenderSystem.setShaderTexture(0, textures.get(Type.SKIN));
-			} else {
-				RenderSystem.setShaderTexture(0, DefaultSkinHelper.getTexture());
-			}
-
 			return true;
 		}
 
-		public boolean bindCape() {
-			if (textures.containsKey(Type.CAPE)) {
-				RenderSystem.setShaderTexture(0, textures.get(Type.CAPE));
-				return true;
-			}
+		public Identifier getSkinTexture() {
+			return skinTextures != null ? skinTextures.get().body().texturePath() : DefaultSkinHelper.getTexture();
+		}
 
-			return false;
+		public boolean bindCape() {
+			return skinTextures != null && skinTextures.get().cape() != null;
+		}
+
+		public Identifier getCapeTexture() {
+			return skinTextures.get().cape().texturePath();
 		}
 	}
 
@@ -454,9 +454,9 @@ public class AccountManagerScreen extends WindowScreen {
 				if (id.length() == 32)
 					id = id.substring(0, 8) + "-" + id.substring(8, 12) + "-" + id.substring(12, 16) + "-" + id.substring(16, 20) + "-" + id.substring(20);
 
-				return new Session(input[0], id, "", Optional.empty(), Optional.empty(), Session.AccountType.MOJANG);
+				return new Session(input[0], UUID.fromString(id), "", Optional.empty(), Optional.empty());
 			} catch (Exception e) {
-				return new Session(input[0], NO_UUID, "", Optional.empty(), Optional.empty(), Session.AccountType.MOJANG);
+				return new Session(input[0], UUID.fromString(NO_UUID), "", Optional.empty(), Optional.empty());
 			}
 		}, Pair.of("Username", false)),
 		MOJANG(input -> {

@@ -1,30 +1,19 @@
 package org.bleachhack.util.shader;
 
-import java.io.IOException;
-import com.google.gson.JsonSyntaxException;
-
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.PostEffectProcessor;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.texture.TextureManager;
-import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
+
+import java.util.Set;
 
 public class ShaderLoader {
 
-	public static ShaderProgram load(VertexFormat format, Identifier id) throws IOException {
-		ResourceManager resMang = MinecraftClient.getInstance().getResourceManager();
-		
-		return new ShaderProgram(new OpenResourceManager(resMang), id.toString(), format);
-	}
-
-	public static PostEffectProcessor loadEffect(Framebuffer framebuffer, Identifier id) throws JsonSyntaxException, IOException {
-		ResourceManager resMang = MinecraftClient.getInstance().getResourceManager();
-		TextureManager texMang = MinecraftClient.getInstance().getTextureManager();
-	
-		return new PostEffectProcessor(texMang, new OpenResourceManager(resMang), framebuffer, id);
+	// 1.21.11: post effects are loaded (and compile-cached) through vanilla's own centralized
+	// MinecraftClient.getShaderLoader() instead of a raw `new PostEffectProcessor(...)` construction -
+	// mod-bundled assets/<namespace>/post_effect/*.json is found automatically since our mod jar is
+	// already a resource pack, so the old OpenResourceManager hack is no longer needed at all.
+	public static PostEffectProcessor loadEffect(Identifier id) {
+		return MinecraftClient.getInstance().getShaderLoader().loadPostEffect(id, Set.of());
 	}
 
 }

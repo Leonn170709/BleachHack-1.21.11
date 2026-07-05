@@ -10,21 +10,16 @@ accessible    field    net/minecraft/client/network/ClientPlayerInteractionManag
 
 
 # MinecraftVersion
-# - For ProtocolScreen to make the version constants accessible
-accessible    field    net/minecraft/MinecraftVersion    name    Ljava/lang/String;
-mutable       field    net/minecraft/MinecraftVersion    name    Ljava/lang/String;
-# accessible    field    net/minecraft/MinecraftVersion    releaseTarget    Ljava/lang/String;
-# mutable       field    net/minecraft/MinecraftVersion    releaseTarget    Ljava/lang/String;
-accessible    field    net/minecraft/MinecraftVersion    protocolVersion    I
-mutable       field    net/minecraft/MinecraftVersion    protocolVersion    I
-accessible    field    net/minecraft/MinecraftVersion    dataPackVersion    I
-mutable       field    net/minecraft/MinecraftVersion    dataPackVersion    I
+# - ProtocolScreen used to mutate MinecraftVersion's name/protocolVersion/dataPackVersion fields directly.
+#   As of 1.21.11 SharedConstants.getGameVersion() returns an immutable GameVersion interface (record-backed);
+#   MinecraftVersion only exposes static factories now. No field-widener equivalent exists.
+#   ProtocolScreen needs a real rework (spoof at the handshake-packet level instead) - see task #5/ProtocolScreen.java.
 
 
 # MinecraftClient
 # - For AccountManager to change the session
-accessible    field    net/minecraft/client/MinecraftClient    session    Lnet/minecraft/client/util/Session;
-mutable       field    net/minecraft/client/MinecraftClient    session    Lnet/minecraft/client/util/Session;
+accessible    field    net/minecraft/client/MinecraftClient    session    Lnet/minecraft/client/session/Session;
+mutable       field    net/minecraft/client/MinecraftClient    session    Lnet/minecraft/client/session/Session;
 # - For FastUse to change the item use cooldown and rightclick the mouse
 accessible    method    net/minecraft/client/MinecraftClient    doItemUse    ()V
 accessible    field    net/minecraft/client/MinecraftClient    itemUseCooldown    I
@@ -35,6 +30,7 @@ accessible    field    net/minecraft/client/MinecraftClient    currentFps    I
 # SoundManager
 # - For NotebotStealer to access soundsystem
 accessible    field    net/minecraft/client/sound/SoundManager    soundSystem    Lnet/minecraft/client/sound/SoundSystem;
+# SoundSystem.sounds is still a Multimap<SoundCategory, SoundInstance> in 1.21.11 - unchanged descriptor.
 accessible    field    net/minecraft/client/sound/SoundSystem    sounds    Lcom/google/common/collect/Multimap;
 
 
@@ -43,33 +39,41 @@ accessible    field    net/minecraft/client/sound/SoundSystem    sounds    Lcom/
 
 # ChunkBuilder
 # - For MixinChunkRebuildTask to overwrite the chunk building method
+# 1.21.11 restructured chunk building entirely: ChunkBuilder$ChunkData and
+# $BuiltChunk$RebuildTask$RenderData no longer exist. Replaced by top-level ChunkRenderData +
+# BlockRenderLayer + ChunkBuilder$Result. MixinChunkRebuildTask needs a real rewrite - see task #4.
 accessible    class    net/minecraft/client/render/chunk/ChunkBuilder$BuiltChunk$RebuildTask
-accessible    class    net/minecraft/client/render/chunk/ChunkBuilder$BuiltChunk$RebuildTask$RenderData
-accessible    field    net/minecraft/client/render/chunk/ChunkBuilder$ChunkData    nonEmptyLayers    Ljava/util/Set;
-accessible    field    net/minecraft/client/render/chunk/ChunkBuilder$ChunkData    occlusionGraph    Lnet/minecraft/client/render/chunk/ChunkOcclusionData;
-# accessible    field    net/minecraft/client/render/chunk/ChunkBuilder$ChunkData    bufferState    Lnet/minecraft/client/render/BufferBuilder$State;
-accessible    method    net/minecraft/client/render/chunk/ChunkBuilder$BuiltChunk$RebuildTask$RenderData    <init>    ()V
+accessible    class    net/minecraft/client/render/chunk/ChunkRenderData
 
 
 # RenderLayer
-# - Making various classes accessible for ColorVertexConsumerProvider
-accessible    class    net/minecraft/client/render/RenderLayer$MultiPhase
-accessible    method    net/minecraft/client/render/RenderLayer$MultiPhase    getPhases    ()Lnet/minecraft/client/render/RenderLayer$MultiPhaseParameters;
+# 1.21.11 removed RenderPhase and RenderLayer$MultiPhase/$MultiPhaseParameters/$OutlineMode entirely
+# (renderer overhaul to a RenderPipeline-based system).
 
-accessible    class    net/minecraft/client/render/RenderLayer$MultiPhaseParameters
-accessible    field    net/minecraft/client/render/RenderLayer$MultiPhaseParameters    texture    Lnet/minecraft/client/render/RenderPhase$TextureBase;
-accessible    field    net/minecraft/client/render/RenderLayer$MultiPhaseParameters    outlineMode    Lnet/minecraft/client/render/RenderLayer$OutlineMode;
+# RenderLayers
+# - DEBUG_FILLED_BOX/DEBUG_QUADS are vanilla's own translucent position-color quad RenderLayers
+#   (used by Minecraft's own debug renderers) - reused by Renderer.java for ESP/box/quad fills
+#   instead of constructing a brand new RenderPipeline, since RenderLayer.of(...) itself is
+#   package-private in 1.21.11 (no public factory for arbitrary custom RenderLayers any more).
+accessible    field    net/minecraft/client/render/RenderLayers    DEBUG_FILLED_BOX    Lnet/minecraft/client/render/RenderLayer;
+accessible    field    net/minecraft/client/render/RenderLayers    DEBUG_QUADS    Lnet/minecraft/client/render/RenderLayer;
 
-accessible    class    net/minecraft/client/render/RenderPhase$TextureBase
-accessible    method    net/minecraft/client/render/RenderPhase$TextureBase    getId    ()Ljava/util/Optional;
+# RenderLayer.of
+# - For Renderer.java's NO_DEPTH_FILL/NO_DEPTH_LINES custom "see through walls" RenderLayers
+#   (RenderLayer.of(...) is package-private in 1.21.11 - no public factory for custom RenderLayers).
+accessible    method    net/minecraft/client/render/RenderLayer    of    (Ljava/lang/String;Lnet/minecraft/client/render/RenderSetup;)Lnet/minecraft/client/render/RenderLayer;
 
-accessible    class    net/minecraft/client/render/RenderLayer$OutlineMode
-accessible    field    net/minecraft/client/render/RenderLayer$MultiPhaseParameters    outlineMode    Lnet/minecraft/client/render/RenderLayer$OutlineMode;
+# RenderPipelines.RENDERTYPE_LINES_SNIPPET
+# - For Renderer's "see through walls" NO_DEPTH_TEST line variant to reuse vanilla's exact lines
+#   shader/uniform declarations (Fog/Globals/Projection/DynamicTransforms) instead of trying to
+#   redeclare them by hand and risk a subtly wrong (and unverifiable without a running game) pipeline.
+accessible    field    net/minecraft/client/gl/RenderPipelines    RENDERTYPE_LINES_SNIPPET    Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;
 
 
 # TextRenderer
-# - Making the font storage accessible so WindowPassTextFieldWidget can override the text renderer
-accessible    field    net/minecraft/client/font/TextRenderer    fontStorageAccessor    Ljava/util/function/Function;
+# - Making the font provider accessible so WindowPassTextFieldWidget can override the text renderer.
+# fontStorageAccessor (a Function) was replaced by the "fonts" field (TextRenderer$GlyphsProvider).
+accessible    field    net/minecraft/client/font/TextRenderer    fonts    Lnet/minecraft/client/font/TextRenderer$GlyphsProvider;
 
 
 ## =========== Screens ===========
@@ -77,9 +81,10 @@ accessible    field    net/minecraft/client/font/TextRenderer    fontStorageAcce
 
 # DisconnectedScreen
 # - For AutoReconnect to read the various fields of DisconnectedScreen
+# reason/reasonHeight were replaced by a single DisconnectionInfo record field ("info"); read the
+# disconnect text via info.reason() in AutoReconnect.java instead - see task #5.
 accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    parent    Lnet/minecraft/client/gui/screen/Screen;
-accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    reason    Lnet/minecraft/text/Text;
-accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    reasonHeight    I
+accessible    field    net/minecraft/client/gui/screen/DisconnectedScreen    info    Lnet/minecraft/network/DisconnectionInfo;
 
 
 # HandledScreen
@@ -105,22 +110,17 @@ accessible    field    net/minecraft/entity/projectile/FishingBobberEntity    CA
 
 # EntityVelocityUpdateS2CPacket
 # - For NoVelocity to cancel entity velocity
-accessible    field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityX    I
-mutable       field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityX    I
-accessible    field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityY    I
-mutable       field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityY    I
-accessible    field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityZ    I
-mutable       field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocityZ    I
+# 1.19.4 had separate int velocityX/Y/Z fields; 1.21.11 merged them into one final Vec3d "velocity" field.
+accessible    field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocity    Lnet/minecraft/util/math/Vec3d;
+mutable       field    net/minecraft/network/packet/s2c/play/EntityVelocityUpdateS2CPacket    velocity    Lnet/minecraft/util/math/Vec3d;
 
 
 # ExplosionS2CPacket
 # - For NoVelocity to cancel explosion velocity
-accessible    field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityX    F
-mutable       field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityX    F
-accessible    field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityY    F
-mutable       field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityY    F
-accessible    field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityZ    F
-mutable       field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerVelocityZ    F
+# ExplosionS2CPacket is now a record; playerVelocityX/Y/Z merged into one Optional<Vec3d> "playerKnockback"
+# field. Widening removes the record's synthetic finality so the field can still be reassigned in place.
+accessible    field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerKnockback    Ljava/util/Optional;
+mutable       field    net/minecraft/network/packet/s2c/play/ExplosionS2CPacket    playerKnockback    Ljava/util/Optional;
 
 
 # GameMessageS2CPacket
@@ -143,10 +143,11 @@ mutable       field    net/minecraft/network/packet/c2s/play/PlayerMoveC2SPacket
 
 # PlayerPositionLookS2CPacket
 # - For ElytraFly & PacketFly to change the yaw and pitch
-accessible    field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    pitch    F
-mutable       field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    pitch    F
-accessible    field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    yaw    F
-mutable       field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    yaw    F
+# 1.21.11: PlayerPositionLookS2CPacket is now a record; pitch/yaw were merged into a nested
+# EntityPosition record ("change" field). EntityPosition has a withRotation(float yaw, float pitch)
+# method - modules should do packet.change = packet.change().withRotation(newYaw, newPitch) - see task #5.
+accessible    field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    change    Lnet/minecraft/entity/EntityPosition;
+mutable       field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    change    Lnet/minecraft/entity/EntityPosition;
 
 
 # VehicleMoveC2SPacket

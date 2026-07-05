@@ -12,9 +12,10 @@ import org.bleachhack.gui.clickgui.window.ModuleWindow;
 import org.bleachhack.setting.SettingDataHandlers;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.sound.SoundEvents;
 
 public class SettingButton extends ModuleSetting<Void> {
@@ -26,17 +27,17 @@ public class SettingButton extends ModuleSetting<Void> {
 		this.action = action;
 	}
 
-	public void render(ModuleWindow window, MatrixStack matrices, int x, int y, int len) {
+	public void render(ModuleWindow window, DrawContext matrices, int x, int y, int len) {
 		if (window.mouseOver(x, y, x + len, y + 12)) {
-			DrawableHelper.fill(matrices, x + 1, y, x + len, y + 12, 0x70303070);
+			matrices.fill(x + 1, y, x + len, y + 12, 0x70303070);
 		}
 
-		MinecraftClient.getInstance().textRenderer.drawWithShadow(matrices, getName(), x + 3, y + 2, 0xcfe0cf);
+		matrices.drawTextWithShadow(MinecraftClient.getInstance().textRenderer, getName(), x + 3, y + 2, 0xcfe0cf);
 
 		if (window.mouseOver(x, y, x + len, y + 12) && window.lmDown) {
 			window.mouseReleased(window.mouseX, window.mouseY, 1);
-			MinecraftClient.getInstance().currentScreen.mouseReleased(window.mouseX, window.mouseY, 0);
-			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
+			MinecraftClient.getInstance().currentScreen.mouseReleased(new Click(window.mouseX, window.mouseY, new MouseInput(0, 0)));
+			MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.3F));
 			action.run();
 		}
 	}

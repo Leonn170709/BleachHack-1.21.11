@@ -12,7 +12,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import net.minecraft.registry.Registries;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ItemEnchantmentsComponent;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.bleachhack.command.Command;
@@ -23,8 +28,6 @@ import org.bleachhack.util.BleachLogger;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtList;
 
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
@@ -33,7 +36,9 @@ import net.minecraft.util.Formatting;
 
 public class CmdEnchant extends Command {
 
-	private static final Map<String[], Enchantment> enchantments = new LinkedHashMap<>();
+	// 1.21.11 made enchantments a fully data-driven registry (RegistryKey<Enchantment>, resolved
+	// through the world's DynamicRegistryManager) instead of a fixed static Registries.ENCHANTMENT.
+	private static final Map<String[], RegistryKey<Enchantment>> enchantments = new LinkedHashMap<>();
 
 	static {
 		enchantments.put(new String[] { "aqua_affinity", "aqua" }, Enchantments.AQUA_AFFINITY);
@@ -70,7 +75,7 @@ public class CmdEnchant extends Command {
 		enchantments.put(new String[] { "sharpness", "sharp" }, Enchantments.SHARPNESS);
 		enchantments.put(new String[] { "silk_touch", "silk" }, Enchantments.SILK_TOUCH);
 		enchantments.put(new String[] { "smite" }, Enchantments.SMITE);
-		enchantments.put(new String[] { "sweeping_edge", "sweep" }, Enchantments.SWEEPING);
+		enchantments.put(new String[] { "sweeping_edge", "sweep" }, Enchantments.SWEEPING_EDGE);
 		enchantments.put(new String[] { "thorns" }, Enchantments.THORNS);
 		enchantments.put(new String[] { "soul_speed", "soul" }, Enchantments.SOUL_SPEED);
 		enchantments.put(new String[] { "unbreaking" }, Enchantments.UNBREAKING);
@@ -105,44 +110,40 @@ public class CmdEnchant extends Command {
 		}
 
 		int level = args.length == 1 ? 1 : Integer.parseInt(args[1]);
-		ItemStack item = mc.player.getInventory().getMainHandStack();
+		ItemStack item = mc.player.getMainHandStack();
+		Registry<Enchantment> registry = mc.world.getRegistryManager().getOrThrow(RegistryKeys.ENCHANTMENT);
 
 		if (args[0].equalsIgnoreCase("all")) {
-			for (Enchantment e : Registries.ENCHANTMENT) {
-				enchant(item, e, level);
-			}
-
+			registry.streamEntries().forEach(e -> enchant(item, e, level));
 			return;
 		}
 
 		int i = NumberUtils.toInt(args[0], -1);
 
 		if (i != -1) {
-			enchant(item, Enchantment.byRawId(i), level);
+			enchant(item, registry.getEntry(i).orElse(null), level);
 		} else {
 			enchant(item, enchantments.entrySet().stream()
 					.filter(e -> ArrayUtils.contains(e.getKey(), args[0]))
 					.map(Entry::getValue)
+					.map(registry::getOptional)
+					.filter(java.util.Optional::isPresent)
+					.map(java.util.Optional::get)
 					.findFirst().orElse(null), level);
 		}
 	}
 
-	public void enchant(ItemStack item, Enchantment e, int level) {
+	public void enchant(ItemStack item, RegistryEntry<Enchantment> e, int level) {
 		if (e == null) {
 			throw new CmdSyntaxException("Invalid enchantment!");
 		}
 
-		if (item.getNbt() == null)
-			item.setNbt(new NbtCompound());
-		if (!item.getNbt().contains("Enchantments", 9)) {
-			item.getNbt().put("Enchantments", new NbtList());
-		}
-
-		NbtList listnbt = item.getNbt().getList("Enchantments", 10);
-		NbtCompound compoundnbt = new NbtCompound();
-		compoundnbt.putString("id", String.valueOf(Registries.ENCHANTMENT.getId(e)));
-		compoundnbt.putInt("lvl", level);
-		listnbt.add(compoundnbt);
+		// 1.19.4 stored enchantments as a raw "Enchantments" NBT list; ItemStack has no NBT access at
+		// all anymore - enchantments are a DataComponentTypes.ENCHANTMENTS component now.
+		ItemEnchantmentsComponent current = item.getOrDefault(DataComponentTypes.ENCHANTMENTS, ItemEnchantmentsComponent.DEFAULT);
+		ItemEnchantmentsComponent.Builder builder = new ItemEnchantmentsComponent.Builder(current);
+		builder.set(e, level);
+		item.set(DataComponentTypes.ENCHANTMENTS, builder.build());
 	}
 
 }

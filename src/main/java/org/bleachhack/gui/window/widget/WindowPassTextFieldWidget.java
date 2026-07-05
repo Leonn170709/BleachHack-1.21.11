@@ -16,10 +16,14 @@ public class WindowPassTextFieldWidget extends WindowTextFieldWidget {
 	}
 
 	private TextRenderer createTextRenderer() {
-		return new TextRenderer(mc.textRenderer.fontStorageAccessor, false) {
+		// 1.21.11: fontStorageAccessor (a Function) was replaced by the "fonts" field
+		// (TextRenderer$GlyphsProvider, widened via accesswidener - see task #3 notes), and the
+		// constructor dropped its second boolean argument. draw(...) also changed shape: void return,
+		// no trailing rightToLeft parameter.
+		return new TextRenderer(mc.textRenderer.fonts) {
 			@Override
-			public int draw(String text, float x, float y, int color, boolean shadow, Matrix4f matrix, VertexConsumerProvider vertexConsumers, TextLayerType textLayerType, int backgroundColor, int light, boolean rightToLeft) {
-				return super.draw(hide(text), x, y, color, shadow, matrix, vertexConsumers, textLayerType, backgroundColor, light, rightToLeft);
+			public void draw(String text, float x, float y, int color, boolean shadow, Matrix4f matrix, VertexConsumerProvider vertexConsumers, TextLayerType textLayerType, int backgroundColor, int light) {
+				super.draw(hide(text), x, y, color, shadow, matrix, vertexConsumers, textLayerType, backgroundColor, light);
 			}
 
 			@Override
@@ -36,7 +40,7 @@ public class WindowPassTextFieldWidget extends WindowTextFieldWidget {
 				if (text != textField.getText()) // literal equal becasue dabruh
 					return text;
 
-				return new String(new char[textField.getText().length()]).replace('\0', '\u2022');
+				return new String(new char[textField.getText().length()]).replace('\0', '•');
 			}
 		};
 	}

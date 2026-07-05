@@ -19,57 +19,40 @@ public class EventEntityRender extends Event {
 	public static class Single extends EventEntityRender {
 
 		protected Entity entity;
-		protected MatrixStack matrices;
-		protected VertexConsumerProvider vertex;
 
 		public Entity getEntity() {
 			return entity;
 		}
 
-		public MatrixStack getMatrix() {
-			return matrices;
-		}
-
-		public VertexConsumerProvider getVertex() {
-			return vertex;
-		}
-
+		// 1.21.11: entity rendering no longer takes a MatrixStack/VertexConsumerProvider directly (it
+		// now builds an EntityRenderState up front and submits draws through an OrderedRenderCommandQueue
+		// - see task #3/#4 notes), so Pre only supports cancelling a specific entity's render now, at the
+		// visibility-check stage - nothing ever used getMatrix()/getVertex() on it besides the mixin itself.
 		public static class Pre extends Single {
 
-			public Pre(Entity entity, MatrixStack matrices, VertexConsumerProvider vertex) {
-				this.entity = entity;
-				this.matrices = matrices;
-				this.vertex = vertex;
-			}
-
-			public void setMatrix(MatrixStack matrices) {
-				this.matrices = matrices;
-			}
-
-			public void setVertex(VertexConsumerProvider vertex) {
-				this.vertex = vertex;
-			}
-
-			public void setEntity(Entity entity) {
+			public Pre(Entity entity) {
 				this.entity = entity;
 			}
 		}
 
-		public static class Post extends Single {
-
-			public Post(Entity entity, MatrixStack matrices, VertexConsumerProvider vertex) {
-				this.entity = entity;
-				this.matrices = matrices;
-				this.vertex = vertex;
-			}
-		}
-
+		// Label rendering (nametags) still gets a MatrixStack/VertexConsumerProvider directly.
 		public static class Label extends Single {
+
+			protected MatrixStack matrices;
+			protected VertexConsumerProvider vertex;
 
 			public Label(Entity entity, MatrixStack matrices, VertexConsumerProvider vertex) {
 				this.entity = entity;
 				this.matrices = matrices;
 				this.vertex = vertex;
+			}
+
+			public MatrixStack getMatrix() {
+				return matrices;
+			}
+
+			public VertexConsumerProvider getVertex() {
+				return vertex;
 			}
 
 			public void setMatrix(MatrixStack matrices) {

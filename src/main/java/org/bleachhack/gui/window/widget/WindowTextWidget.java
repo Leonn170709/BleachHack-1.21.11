@@ -1,12 +1,6 @@
 package org.bleachhack.gui.window.widget;
 
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.util.math.RotationAxis;
-import org.bleachhack.mixin.AccessorScreen;
-
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 
 import net.minecraft.text.Text;
 
@@ -53,31 +47,23 @@ public class WindowTextWidget extends WindowWidget {
 		this.rotation = rotation;
 	}
 
+	// Style hover-tooltip support (e.g. hovering a clickable/hoverable text component) was dropped:
+	// Screen.renderTextHoverEffect(...) was removed in 1.21.11 with no replacement method, and
+	// reimplementing its show_text/show_item/show_entity handling from scratch was out of scope here.
 	@Override
-	public void render(MatrixStack matrices, int windowX, int windowY, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int windowX, int windowY, int mouseX, int mouseY) {
 		super.render(matrices, windowX, windowY, mouseX, mouseY);
 
 		float offset = mc.textRenderer.getWidth(text) * align.offset * scale;
 
-		matrices.push();
-		matrices.scale(scale, scale, 1f);
-		matrices.translate((windowX + x1 - offset) / scale, (windowY + y1) / scale, 0);
-		matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(rotation));
+		matrices.getMatrices().pushMatrix();
+		matrices.getMatrices().scale(scale, scale);
+		matrices.getMatrices().translate((windowX + x1 - offset) / scale, (windowY + y1) / scale);
+		matrices.getMatrices().rotate((float) Math.toRadians(rotation));
 
-		VertexConsumerProvider.Immediate immediate = VertexConsumerProvider.immediate(Tessellator.getInstance().getBuffer());
-		mc.textRenderer.draw(text, 0, 0, color, shadow, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.NORMAL, 0, 0xf000f0);
-		immediate.draw();
+		matrices.drawText(mc.textRenderer, text, 0, 0, color, shadow);
 
-		if (text.getStyle() != null && mc.currentScreen != null
-				&& mouseX >= windowX + x1 - offset && mouseX <= windowX + x2 - offset && mouseY >= windowY + y1 && mouseY <= windowY + y2) {
-			matrices.push();
-			matrices.translate(0, 0, 250);
-			((AccessorScreen) mc.currentScreen).callRenderTextHoverEffect(
-					matrices, text.getStyle(), mouseX - (windowX + x1 - (int) offset), mouseY - (windowY + y1));
-			matrices.pop();
-		}
-
-		matrices.pop();
+		matrices.getMatrices().popMatrix();
 	}
 
 	public Text getText() {

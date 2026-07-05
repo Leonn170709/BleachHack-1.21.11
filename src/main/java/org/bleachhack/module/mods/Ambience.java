@@ -10,7 +10,6 @@ package org.bleachhack.module.mods;
 
 import org.bleachhack.event.events.EventBiomeColor;
 import org.bleachhack.event.events.EventPacket;
-import org.bleachhack.event.events.EventSkyRender;
 import org.bleachhack.event.events.EventTick;
 import org.bleachhack.eventbus.BleachSubscribe;
 import org.bleachhack.module.Module;
@@ -20,11 +19,9 @@ import org.bleachhack.setting.module.SettingMode;
 import org.bleachhack.setting.module.SettingSlider;
 import org.bleachhack.setting.module.SettingToggle;
 
-import net.minecraft.client.render.DimensionEffects;
-import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class Ambience extends Module {
@@ -132,34 +129,14 @@ public class Ambience extends Module {
 		}
 	}
 
-	@BleachSubscribe
-	public void onSkyColor(EventSkyRender.Color event) {
-		if (getCurrentDimSetting().getState() && getCurrentDimSetting().getChild(0).asToggle().getState()) {
-			int[] color = getCurrentDimSetting().getChild(0).asToggle().getChild(1).asColor().getRGBArray();
-			event.setColor(new Vec3d(color[0] / 255d, color[1] / 255d, color[2] / 255d));
-		}
-	}
-
-	@BleachSubscribe
-	public void onSkyProperties(EventSkyRender.Properties event) {
-		if (getCurrentDimSetting().getState() && getCurrentDimSetting().getChild(0).asToggle().getState()
-				&& getCurrentDimSetting().getChild(0).asToggle().getChild(0).asToggle().getState()) {
-			event.setSky(new DimensionEffects(event.getSky().getCloudsHeight(), false, DimensionEffects.SkyType.END, true, false) {
-
-				public Vec3d adjustFogColor(Vec3d color, float sunHeight) {
-					return color.multiply(0.15000000596046448D);
-				}
-
-				public boolean useThickFog(int camouseX, int camouseY) {
-					return false;
-				}
-
-				public float[] getFogColorOverride(float skyAngle, float tickDelta) {
-					return null;
-				}
-			});
-		}
-	}
+	// 1.21.11 replaced the old per-property DimensionEffects subclassing model (getSkyColor/
+	// getCloudsColor/getDimensionEffects/getFogColorOverride) with a generic, position/biome-weighted
+	// EnvironmentAttributes system (World.getEnvironmentAttributes().getAttributeValue(...)). The old
+	// ClientWorld/DimensionEffects mixins that fired these hooks had to be removed since their target
+	// methods no longer exist. The "Sky Color"/"End Skybox" settings above are kept (so saved configs
+	// don't break) but currently don't change anything - overriding EnvironmentAttributes.SKY_COLOR_
+	// VISUAL/FOG_COLOR_VISUAL for the current dimension would need a mixin into
+	// WorldEnvironmentAttributeAccess.getAttributeValue(...) instead - not yet done.
 
 	private SettingToggle getCurrentDimSetting() {
 		return getSetting(mc.world.getRegistryKey() == World.END ? 4 : mc.world.getRegistryKey() == World.NETHER ? 3 : 2).asToggle();

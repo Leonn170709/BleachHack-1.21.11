@@ -115,7 +115,7 @@ public class CmdServer extends Command {
 	public Text createText(String name, String value) {
 		boolean newlines = value.contains("\n");
 		return Text.literal("\u00a77" + name + "\u00a7f:" + (newlines ? "\n" : " " ) + "\u00a7a" + value).styled(style -> style
-				.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to copy to clipboard")))
+				.withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy to clipboard")))
 				.withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, Formatting.strip(value))));
 	}
 

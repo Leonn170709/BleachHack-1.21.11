@@ -15,21 +15,17 @@ import java.util.List;
 
 import org.bleachhack.gui.window.widget.WindowWidget;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import it.unimi.dsi.fastutil.ints.Int2IntMap.Entry;
 import it.unimi.dsi.fastutil.ints.Int2IntRBTreeMap;
 import it.unimi.dsi.fastutil.ints.Int2IntSortedMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntCollection;
 import it.unimi.dsi.fastutil.ints.IntList;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 
 public abstract class WindowScreen extends Screen {
@@ -127,9 +123,9 @@ public abstract class WindowScreen extends Screen {
 	}
 
 	@Override
-	public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
 		super.render(matrices, mouseX, mouseY, delta);
-		
+
 		for (WindowWidget w : globalWidgets) {
 			w.render(matrices, 0, 0, mouseX, mouseY);
 		}
@@ -157,7 +153,7 @@ public abstract class WindowScreen extends Screen {
 		if (autoClose && close) this.close();
 	}
 
-	public void onRenderWindow(MatrixStack matrices, int window, int mouseX, int mouseY) {
+	public void onRenderWindow(DrawContext matrices, int window, int mouseX, int mouseY) {
 		if (!windows.get(window).closed) {
 			windows.get(window).render(matrices, mouseX, mouseY);
 		}
@@ -188,7 +184,11 @@ public abstract class WindowScreen extends Screen {
 	}
 
 	@Override
-	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	public boolean mouseClicked(Click click, boolean doubleClick) {
+		double mouseX = click.x();
+		double mouseY = click.y();
+		int button = click.button();
+
 		/* Handle what window will be selected when clicking */
 		for (int wi: getWindowsFrontToBack()) {
 			Window w = getWindow(wi);
@@ -213,15 +213,15 @@ public abstract class WindowScreen extends Screen {
 			}
 		} catch (ConcurrentModificationException ignored) {}
 
-		return super.mouseClicked(mouseX, mouseY, button);
+		return super.mouseClicked(click, doubleClick);
 	}
 
 	@Override
-	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	public boolean mouseReleased(Click click) {
 		for (Window w : windows)
-			w.mouseReleased(mouseX, mouseY, button);
+			w.mouseReleased(click.x(), click.y(), click.button());
 
-		return super.mouseReleased(mouseX, mouseY, button);
+		return super.mouseReleased(click);
 	}
 
 	@Override
@@ -233,43 +233,18 @@ public abstract class WindowScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	public boolean keyPressed(KeyInput input) {
 		for (Window w : windows)
-			w.keyPressed(keyCode, scanCode, modifiers);
+			w.keyPressed(input.key(), input.scancode(), input.modifiers());
 
-		return super.keyPressed(keyCode, scanCode, modifiers);
+		return super.keyPressed(input);
 	}
 
 	@Override
-	public boolean charTyped(char chr, int modifiers) {
+	public boolean charTyped(CharInput input) {
 		for (Window w : windows)
-			w.charTyped(chr, modifiers);
+			w.charTyped((char) input.codepoint(), input.modifiers());
 
-		return super.charTyped(chr, modifiers);
-	}
-
-	@Override
-	public void renderBackgroundTexture(MatrixStack matrices) {
-		int colorOffset = (int) ((System.currentTimeMillis() / 75) % 100);
-		if (colorOffset > 50)
-			colorOffset = 50 - (colorOffset - 50);
-
-		// smooth
-		colorOffset = (int) (-(Math.cos(Math.PI * (colorOffset / 50d)) - 1) / 2 * 50);
-
-		RenderSystem.enableBlend();
-		RenderSystem.defaultBlendFunc();
-		RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-		Tessellator tessellator = Tessellator.getInstance();
-		BufferBuilder bufferBuilder = Tessellator.getInstance().getBuffer();
-		bufferBuilder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-		bufferBuilder.vertex(width, 0, 0).color(30, 20, 80, 255).next();
-		bufferBuilder.vertex(0, 0, 0).color(30 + colorOffset / 3, 20, 80, 255).next();
-		bufferBuilder.vertex(0, height + 16, 0).color(90, 54, 159, 255).next();
-		bufferBuilder.vertex(width, height + 16, 0).color(105 + colorOffset, 54, 189, 255).next();
-		tessellator.draw();
-
-		RenderSystem.disableBlend();
+		return super.charTyped(input);
 	}
 }

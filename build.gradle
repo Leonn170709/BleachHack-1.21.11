@@ -1,12 +1,11 @@
 plugins {
-	id "fabric-loom" version "1.1-SNAPSHOT"
+	id "net.fabricmc.fabric-loom-remap" version "1.17-SNAPSHOT"
 	id "maven-publish"
 }
 
-sourceCompatibility = JavaVersion.VERSION_17
-targetCompatibility = JavaVersion.VERSION_17
-
-archivesBaseName = project.archives_base_name
+base {
+	archivesName = project.archives_base_name
+}
 version = project.mod_version
 group = project.maven_group
 
@@ -44,8 +43,10 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	// Minecraft 1.18 (1.18-pre2) upwards uses Java 17.
-	it.options.release = 17
+	// Minecraft 1.20.5 (1.20.5-pre1) upwards uses Java 21.
+	it.options.release = 21
+	// ponytail: raised during the 1.21.11 port to see all errors per pass instead of the first 100; revert once green.
+	it.options.compilerArgs << "-Xmaxerrs" << "10000"
 }
 
 java {
@@ -53,11 +54,14 @@ java {
 	// if it is present.
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 }
 
 jar {
 	from("LICENSE") {
-		rename { "${it}-${project.archivesBaseName}"}
+		rename { "${it}-${project.archives_base_name}"}
 	}
 }
 

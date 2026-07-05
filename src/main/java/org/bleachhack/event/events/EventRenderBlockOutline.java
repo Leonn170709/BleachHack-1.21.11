@@ -10,7 +10,6 @@ package org.bleachhack.event.events;
 
 import org.bleachhack.event.Event;
 
-import net.minecraft.block.BlockState;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
@@ -20,13 +19,13 @@ public class EventRenderBlockOutline extends Event {
 	private MatrixStack matrices;
 	private VertexConsumer vertexConsumer;
 	private BlockPos pos;
-	private BlockState state;
 
-	public EventRenderBlockOutline(MatrixStack matrices, VertexConsumer vertexConsumer, BlockPos pos, BlockState state) {
+	// 1.21.11: the BlockState is no longer available at this call site (see task #4 notes -
+	// WorldRenderer's OutlineRenderState only carries the position + collision/interaction shapes).
+	public EventRenderBlockOutline(MatrixStack matrices, VertexConsumer vertexConsumer, BlockPos pos) {
 		this.matrices = matrices;
 		this.vertexConsumer = vertexConsumer;
 		this.pos = pos;
-		this.state = state;
 	}
 
 	public MatrixStack getMatrices() {
@@ -52,14 +51,5 @@ public class EventRenderBlockOutline extends Event {
 	public void setPos(BlockPos pos) {
 		this.pos = pos;
 	}
-
-	public BlockState getState() {
-		return state;
-	}
-
-	public void setState(BlockState state) {
-		this.state = state;
-	}
-
 
 }

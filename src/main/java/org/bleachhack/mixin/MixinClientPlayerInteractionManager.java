@@ -11,7 +11,6 @@ package org.bleachhack.mixin;
 import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventBlockBreakCooldown;
 import org.bleachhack.event.events.EventInteract;
-import org.bleachhack.event.events.EventReach;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -100,11 +99,7 @@ public class MixinClientPlayerInteractionManager {
 		}
 	}
 
-	@Inject(method = "getReachDistance", at = @At("RETURN"), cancellable = true)
-	private void getReachDistance(CallbackInfoReturnable<Float> callback) {
-		EventReach event = new EventReach(callback.getReturnValueF());
-		BleachHack.eventBus.post(event);
-
-		callback.setReturnValue(event.getReach());
-	}
+	// getReachDistance() no longer exists - reach is now attribute-based
+	// (EntityAttributes.BLOCK_INTERACTION_RANGE/ENTITY_INTERACTION_RANGE on PlayerEntity); see
+	// MixinPlayerEntity for the direct replacement of this hook.
 }

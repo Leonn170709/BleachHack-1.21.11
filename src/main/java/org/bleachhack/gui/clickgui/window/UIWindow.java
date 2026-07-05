@@ -17,8 +17,7 @@ import org.apache.logging.log4j.util.TriConsumer;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.gui.DrawContext;
 
 // this is worse than dispenser32k
 // gonna have no idea what any of this does in 2 weeks
@@ -28,11 +27,11 @@ public class UIWindow extends ClickGuiWindow {
 
 	private BooleanSupplier enabledSupplier;
 	private Supplier<int[]> sizeSupplier;
-	private TriConsumer<MatrixStack, Integer, Integer> renderConsumer;
+	private TriConsumer<DrawContext, Integer, Integer> renderConsumer;
 
 	private UIContainer parentContainer;
 
-	public UIWindow(Position pos, UIContainer parentContainer, BooleanSupplier enabledSupplier, Supplier<int[]> sizeSupplier, TriConsumer<MatrixStack, Integer, Integer> renderConsumer) {
+	public UIWindow(Position pos, UIContainer parentContainer, BooleanSupplier enabledSupplier, Supplier<int[]> sizeSupplier, TriConsumer<DrawContext, Integer, Integer> renderConsumer) {
 		super(0, 0, 0, 0, "", null);
 
 		this.position = pos;
@@ -46,7 +45,7 @@ public class UIWindow extends ClickGuiWindow {
 		return sizeSupplier.get();
 	}
 
-	public void renderUI(MatrixStack matrices) {
+	public void renderUI(DrawContext matrices) {
 		renderConsumer.accept(matrices, x1, y1);
 	}
 
@@ -67,7 +66,7 @@ public class UIWindow extends ClickGuiWindow {
 		position.getAttachments().keySet().removeIf(id -> detachFromConstants || id.length() > 1);
 	}
 
-	public void render(MatrixStack matrices, int mouseX, int mouseY) {
+	public void render(DrawContext matrices, int mouseX, int mouseY) {
 		// Handling of attaching/detaching when dragging
 		int sens = 5;
 		if (dragging) {
@@ -176,7 +175,7 @@ public class UIWindow extends ClickGuiWindow {
 		renderUI(matrices);
 	}
 
-	protected void drawBackground(MatrixStack matrices, int mouseX, int mouseY, TextRenderer textRend) {
+	protected void drawBackground(DrawContext matrices, int mouseX, int mouseY, TextRenderer textRend) {
 		// background
 		/*DrawableHelper.fill(matrices, x1, y1 + 1, x1 + 1, y2 - 1, 0xff6060b0);
 		horizontalGradient(matrices, x1 + 1, y1, x2 - 1, y1 + 1, 0xff6060b0, 0xff8070b0);
@@ -195,7 +194,7 @@ public class UIWindow extends ClickGuiWindow {
 				(position.getAttachments().containsValue(0) ? 0xff60b060 : 0xff6060b0),
 				(position.getAttachments().containsValue(0) ? 0xff80c060 : 0xff8070b0));*/
 
-		DrawableHelper.fill(matrices, x1, y1, x2, y2, 0x90606090);
+		matrices.fill(x1, y1, x2, y2, 0x90606090);
 	}
 
 	public void mouseClicked(double mouseX, double mouseY, int button) {

@@ -57,7 +57,7 @@ public class CmdNBT extends Command {
 						s.withClickEvent(
 								new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textNbt.getString()))
 						.withHoverEvent(
-								new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Copy the nbt of this item to your clipboard"))));
+								new HoverEvent.ShowText(Text.literal("Copy the nbt of this item to your clipboard"))));
 
 				BleachLogger.info(Text.literal("\u00a76\u00a7lNBT: ").append(copy).append("\u00a76\n" + textNbt));
 			}

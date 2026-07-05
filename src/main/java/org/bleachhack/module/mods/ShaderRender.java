@@ -8,10 +8,8 @@
  */
 package org.bleachhack.module.mods;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import net.minecraft.client.gl.PostEffectProcessor;
 import org.bleachhack.event.events.EventRenderShader;
@@ -20,53 +18,44 @@ import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleCategory;
 import org.bleachhack.setting.module.SettingMode;
 
-import com.google.gson.JsonSyntaxException;
-
 import net.minecraft.util.Identifier;
 
 public class ShaderRender extends Module {
 
-	private Identifier lastId = null;
-	private PostEffectProcessor lastShader = null;
-	private int lastWidth;
-	private int lastHeight;
+	// 1.21.11 removed most of the old "Super Secret Settings" post-effect shaders from the vanilla
+	// jar - only these 4 of the original 24 modes still ship as real assets/minecraft/post_effect/
+	// json files. The rest (Notch/FXAA/Art/Bumpy/Blobs/Blobs2/Pencil/Vibrant/Deconverge/Flip/NTSC/
+	// Outline/Phosphor/Scanline/Sobel/Bits/Desaturate/Green/Wobble/Antialias) have no vanilla GLSL/
+	// JSON asset left to reference at all any more; recreating them means re-authoring ~20 post-effect
+	// chains from scratch against the new pipeline. Settings stay identical to 1.19.4 so saved configs
+	// don't break; picking a removed mode just leaves the world unshaded instead of crashing.
+	private static final Set<String> STILL_AVAILABLE = Set.of("invert", "blur", "creeper", "spider");
 
-	private List<Identifier> shaders = new ArrayList<>();
+	private String lastMode = null;
+	private PostEffectProcessor lastShader = null;
 
 	public ShaderRender() {
 		super("ShaderRender", KEY_UNBOUND, ModuleCategory.RENDER, "1.7 Super secret settings.",
 				new SettingMode("Shader", "Notch", "FXAA", "Art", "Bumpy", "Blobs", "Blobs2", "Pencil", "Vibrant",
 						"Deconverge", "Flip", "Invert", "NTSC", "Outline", "Phosphor", "Scanline", "Sobel",
 						"Bits", "Desaturate", "Green", "Blur", "Wobble", "Antialias", "Creeper", "Spider").withDesc("Shader to use."));
-		
-		for (String s: getSetting(0).asMode().modes) {
-			if (s.equals("Vibrant")) {
-				shaders.add(new Identifier("shaders/post/color_convolve.json"));
-			} else if (s.equals("Scanline")) {
-				shaders.add(new Identifier("shaders/post/scan_pincushion.json"));
-			} else {
-				shaders.add(new Identifier("shaders/post/" + s.toLowerCase(Locale.ENGLISH) + ".json"));
-			}
-		}
 	}
 
 	@BleachSubscribe
 	public void onWorldRender(EventRenderShader event) {
-		if (lastShader == null || lastWidth != mc.getWindow().getFramebufferWidth() || lastHeight != mc.getWindow().getFramebufferHeight()
-				|| !shaders.get(getSetting(0).asMode().getMode()).equals(lastId)) {
-			lastId = shaders.get(getSetting(0).asMode().getMode());
-			lastWidth = mc.getWindow().getFramebufferWidth();
-			lastHeight = mc.getWindow().getFramebufferHeight();
+		String[] modes = getSetting(0).asMode().modes;
+		String mode = modes[getSetting(0).asMode().getMode()].toLowerCase(Locale.ENGLISH);
 
-			try {
-				if (lastShader != null) {
-					lastShader.close();
-				}
+		if (!mode.equals(lastMode)) {
+			lastMode = mode;
 
-				lastShader = new PostEffectProcessor(mc.getTextureManager(), mc.getResourceManager(), mc.getFramebuffer(), lastId);
-				lastShader.setupDimensions(mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
-			} catch (JsonSyntaxException | IOException e) {
-				e.printStackTrace();
+			if (lastShader != null) {
+				lastShader.close();
+				lastShader = null;
+			}
+
+			if (STILL_AVAILABLE.contains(mode)) {
+				lastShader = mc.getShaderLoader().loadPostEffect(Identifier.of("minecraft", mode), Set.of());
 			}
 		}
 

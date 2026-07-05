@@ -18,23 +18,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.client.render.RenderTickCounter;
 
-@Mixin(RenderTickCounter.class)
+// 1.21.11 turned RenderTickCounter into an interface; the fields this mixin needs (renamed too) now
+// live on its actual implementation, RenderTickCounter$Dynamic, so the mixin target moved there.
+@Mixin(RenderTickCounter.Dynamic.class)
 public class MixinRenderTickCounter {
 
-	@Shadow private float lastFrameDuration;
-	@Shadow private float tickDelta;
-	@Shadow private long prevTimeMillis;
+	@Shadow private float dynamicDeltaTicks;
+	@Shadow private float tickProgress;
+	@Shadow private long lastTimeMillis;
 	@Shadow private float tickTime;
 
-	@Inject(method = "beginRenderTick", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "beginRenderTick(J)I", at = @At("HEAD"), cancellable = true)
 	private void beginRenderTick(long timeMillis, CallbackInfoReturnable<Integer> ci) {
 		if (ModuleManager.getModule(Timer.class).isEnabled()) {
-			this.lastFrameDuration = (float) (((timeMillis - this.prevTimeMillis) / this.tickTime)
+			this.dynamicDeltaTicks = (float) (((timeMillis - this.lastTimeMillis) / this.tickTime)
 					* ModuleManager.getModule(Timer.class).getSetting(0).asSlider().getValue());
-			this.prevTimeMillis = timeMillis;
-			this.tickDelta += this.lastFrameDuration;
-			int i = (int) this.tickDelta;
-			this.tickDelta -= i;
+			this.lastTimeMillis = timeMillis;
+			this.tickProgress += this.dynamicDeltaTicks;
+			int i = (int) this.tickProgress;
+			this.tickProgress -= i;
 
 			ci.setReturnValue(i);
 		}

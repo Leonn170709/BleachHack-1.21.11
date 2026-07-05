@@ -11,10 +11,11 @@ package org.bleachhack.gui.window;
 import java.util.List;
 import org.apache.commons.lang3.tuple.Triple;
 import org.bleachhack.gui.window.widget.WindowButtonWidget;
-import com.mojang.blaze3d.systems.RenderSystem;
 
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.input.CharInput;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 
@@ -53,7 +54,9 @@ public class WindowManagerScreen extends WindowScreen {
 			remove(t.getLeft());
 		}
 
-		getSelectedScreen().init(client, width, height - 16);
+		// 1.21.11's Screen.init(int,int) is final and no longer takes a MinecraftClient (client is set
+		// in the Screen constructor now).
+		getSelectedScreen().init(width, height - 16);
 		addDrawable(getSelectedScreen());
 		((List<Element>) children()).add(getSelectedScreen());
 	}
@@ -79,21 +82,21 @@ public class WindowManagerScreen extends WindowScreen {
 
 	// Children also don't take keyboard input brueh
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		getSelectedScreen().keyPressed(keyCode, scanCode, modifiers);
-		return super.keyPressed(keyCode, scanCode, modifiers);
+	public boolean keyPressed(KeyInput input) {
+		getSelectedScreen().keyPressed(input);
+		return super.keyPressed(input);
 	}
 
 	@Override
-	public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-		getSelectedScreen().keyReleased(keyCode, scanCode, modifiers);
-		return super.keyReleased(keyCode, scanCode, modifiers);
+	public boolean keyReleased(KeyInput input) {
+		getSelectedScreen().keyReleased(input);
+		return super.keyReleased(input);
 	}
 
 	@Override
-	public boolean charTyped(char chr, int modifiers) {
-		getSelectedScreen().charTyped(chr, modifiers);
-		return super.charTyped(chr, modifiers);
+	public boolean charTyped(CharInput input) {
+		getSelectedScreen().charTyped(input);
+		return super.charTyped(input);
 	}
 
 	private static class WindowTabButtonWidget extends WindowButtonWidget {
@@ -106,7 +109,7 @@ public class WindowManagerScreen extends WindowScreen {
 		}
 
 		@Override
-		public void render(MatrixStack matrices, int windowX, int windowY, int mouseX, int mouseY) {
+		public void render(DrawContext matrices, int windowX, int windowY, int mouseX, int mouseY) {
 			int bx1 = windowX + x1;
 			int by1 = windowY + y1;
 			int bx2 = windowX + x2;
@@ -117,15 +120,17 @@ public class WindowManagerScreen extends WindowScreen {
 					colorTop, colorBottom,
 					isInBounds(windowX, windowY, mouseX, mouseY) ? colorHoverFill : colorFill);
 
-			RenderSystem.getModelViewStack().push();
-			RenderSystem.getModelViewStack().scale(0.7f, 0.7f, 1f);
+			// ItemRenderer.renderGuiItemIcon was removed - DrawContext.drawItem is the modern
+			// GUI-icon entry point and manages its own render state, so this uses DrawContext's own
+			// 2D matrix stack for the 0.7x scale instead of the old global model-view matrix trick.
+			matrices.getMatrices().pushMatrix();
+			matrices.getMatrices().scale(0.7f, 0.7f);
 
-			mc.getItemRenderer().renderGuiItemIcon(matrices, item, (int) ((bx1 + 2) / 0.7), (int) ((by1 - 6 + (by2 - by1) / 2.0) / 0.7));
+			matrices.drawItem(item, (int) ((bx1 + 2) / 0.7), (int) ((by1 - 6 + (by2 - by1) / 2.0) / 0.7));
 
-			RenderSystem.getModelViewStack().pop();
-			RenderSystem.applyModelViewMatrix();
+			matrices.getMatrices().popMatrix();
 
-			mc.textRenderer.drawWithShadow(matrices, text, bx1 + 16, by1 + (by2 - by1) / 2 - 4, -1);
+			matrices.drawTextWithShadow(mc.textRenderer, text, bx1 + 16, by1 + (by2 - by1) / 2 - 4, -1);
 		}
 	}
 }
