@@ -9,18 +9,10 @@
             "inputs": [
                 {
                     "sampler_name": "In",
-                    "target": "minecraft:entity_outline"
+                    "target": "bleachhack:esp_outline"
                 }
             ],
-            "output": "swap",
-            "uniforms": {
-                "OutlineConfig": [
-                    { "name": "Width", "type": "float", "value": 2.0 },
-                    { "name": "FillOpacity", "type": "float", "value": 0.4 },
-                    { "name": "GlowMultiplier", "type": "float", "value": 2.0 },
-                    { "name": "ShapeMode", "type": "float", "value": 2.0 }
-                ]
-            }
+            "output": "swap"
         },
         {
             "vertex_shader": "minecraft:core/screenquad",
@@ -40,7 +32,7 @@
                     }
                 ]
             },
-            "output": "minecraft:entity_outline"
+            "output": "bleachhack:esp_outline"
         }
     ]
 }

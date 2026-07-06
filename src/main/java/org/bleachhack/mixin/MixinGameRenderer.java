@@ -17,13 +17,16 @@ import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventRenderShader;
 import org.bleachhack.module.ModuleManager;
 import org.bleachhack.module.mods.NoRender;
+import org.bleachhack.module.mods.Zoom;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
@@ -67,6 +70,20 @@ public class MixinGameRenderer {
 		}
 
 		return MathHelper.lerp(delta, first, second);
+	}
+
+	// Zoom - Meteor's own Zoom module divides the *computed* per-frame FOV via its GetFovEvent
+	// instead of overwriting GameOptions' persisted FOV value (which is what BleachHack's Zoom used
+	// to do, and which visibly reset the options-screen FOV to "Normal" instead of actually zooming,
+	// since only vanilla's own read of that same option elsewhere applied any zoom at all). Doing the
+	// same here - this method already recomputes the effective FOV fresh every call - means Zoom
+	// needs no persisted option and nothing to restore for FOV specifically.
+	@Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+	private void bleachhack_zoomFov(Camera camera, float tickProgress, boolean changingFov, CallbackInfoReturnable<Float> cir) {
+		Zoom zoom = ModuleManager.getModule(Zoom.class);
+		if (zoom.isEnabled()) {
+			cir.setReturnValue(cir.getReturnValueF() / zoom.getScale());
+		}
 	}
 
 	@Inject(method = "render", at = @At(value = "INVOKE",

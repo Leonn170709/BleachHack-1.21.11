@@ -92,6 +92,10 @@ public class ModuleWindow extends ClickGuiWindow {
 			// draw settings
 			if (m.getValue()) {
 				for (ModuleSetting<?> s : m.getKey().getSettings()) {
+					if (!s.isVisible()) {
+						continue;
+					}
+
 					s.render(this, matrices, x + 1, y + curY, len - 1);
 
 					if (!s.getTooltip().isEmpty() && mouseOver(x + 2, y + curY, x + len, y + s.getHeight(len) + curY)) {
@@ -125,7 +129,9 @@ public class ModuleWindow extends ClickGuiWindow {
 
 			if (e.getValue()) {
 				for (ModuleSetting<?> s : e.getKey().getSettings()) {
-					h += s.getHeight(len);
+					if (s.isVisible()) {
+						h += s.getHeight(len);
+					}
 				}
 			}
 		}

@@ -63,6 +63,15 @@ public class WorldRenderer {
 			matrices.pop();
 		}
 
+		// Vanilla's own entity nametags (LabelCommandRenderer) always draw a translucent SEE_THROUGH
+		// copy of the text - a RenderLayer variant that ignores the depth test - before the opaque
+		// NORMAL copy, so the label stays dimly visible behind terrain/foliage/other entities instead
+		// of disappearing outright. This only ever drew NORMAL, so any nametag whose world position
+		// happened to be behind so much as a leaf block or a fence post vanished completely instead of
+		// dimming, which is what looked like "some nametags just don't render".
+		mc.textRenderer.draw(text, -halfWidth, 0f, -2130706433, false, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, 0xf000f0);
+		immediate.draw();
+
 		mc.textRenderer.draw(text, -halfWidth, 0f, -1, false, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.NORMAL, 0, 0xf000f0);
 		immediate.draw();
 	}

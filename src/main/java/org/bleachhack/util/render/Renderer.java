@@ -49,7 +49,8 @@ public class Renderer {
 	// without them the vertex shader never gets a transform/projection matrix bound and silently draws
 	// nothing, which is why this was invisible while the NO_DEPTH_LINES sibling (built from the
 	// already-widened RENDERTYPE_LINES_SNIPPET, which already includes them) worked fine.
-	private static final RenderLayer NO_DEPTH_FILL = RenderLayer.of("bleachhack_no_depth_fill",
+	// Package-visible (not private) so ShaderEspRenderer can reuse it for its offscreen silhouette pass.
+	static final RenderLayer NO_DEPTH_FILL = RenderLayer.of("bleachhack_no_depth_fill",
 			RenderSetup.builder(RenderPipeline.builder()
 					.withLocation(Identifier.of("bleachhack", "pipeline/no_depth_fill"))
 					.withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)

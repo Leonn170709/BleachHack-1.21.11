@@ -8,6 +8,7 @@
  */
 package org.bleachhack.setting.module;
 
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.bleachhack.gui.clickgui.window.ClickGuiWindow.Tooltip;
@@ -96,7 +97,22 @@ public abstract class ModuleSetting<T> extends Setting<T> {
 	public Tooltip getTooltip(ModuleWindow window, int x, int y, int len) {
 		return new Tooltip(x + len + 2, y, getTooltip());
 	}
-	
+
+	// Lets a setting hide itself depending on another setting in the same module (e.g. a slider
+	// that's meaningless while a particular SettingMode option is selected), mirroring Meteor's
+	// per-setting .visible(...) predicate. Defaults to always-visible so existing settings don't
+	// need to opt in. ModuleWindow skips both layout height and rendering for hidden settings.
+	private Supplier<Boolean> visiblePredicate = () -> true;
+
+	public boolean isVisible() {
+		return visiblePredicate.get();
+	}
+
+	public ModuleSetting<T> visibleWhen(Supplier<Boolean> visiblePredicate) {
+		this.visiblePredicate = visiblePredicate;
+		return this;
+	}
+
 	@Override
 	public void setValue(T value) {
 		super.setValue(value);
