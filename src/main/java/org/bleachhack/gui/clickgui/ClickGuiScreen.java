@@ -69,10 +69,12 @@ public abstract class ClickGuiScreen extends WindowScreen {
 				Tooltip tooltip = ((ClickGuiWindow) w).getTooltip();
 
 				if (tooltip != null) {
-					int tooltipY = tooltip.y;
-
 					String[] split = tooltip.text.split("\n", -1 /* Adding -1 makes it keep empty splits */);
 					ArrayUtils.reverse(split);
+
+					List<List<String>> segments = new ArrayList<>();
+					int maxLineWidth = 0;
+
 					for (String s: split) {
 						/* Match lines to end of words after it reaches 22 characters long */
 						Matcher mat = Pattern.compile(".{1,22}\\b\\W*").matcher(s);
@@ -85,13 +87,28 @@ public abstract class ClickGuiScreen extends WindowScreen {
 						if (lines.isEmpty())
 							lines.add(s);
 
+						for (String line: lines)
+							maxLineWidth = Math.max(maxLineWidth, textRenderer.getWidth(line));
+
+						segments.add(lines);
+					}
+
+					// Flip the tooltip to the left of its anchor point instead of letting it run off the
+					// right edge of the screen (tooltip.x is normally just right of the setting row).
+					int boxX = tooltip.x;
+					if (boxX + maxLineWidth + 3 > width) {
+						boxX = Math.max(0, tooltip.x - maxLineWidth - 9);
+					}
+
+					int tooltipY = tooltip.y;
+					for (List<String> lines: segments) {
 						int start = tooltipY - lines.size() * 10;
 						for (int l = 0; l < lines.size(); l++) {
-							matrices.fill(tooltip.x, start + (l * 10) - 1,
-									tooltip.x + textRenderer.getWidth(lines.get(l)) + 3,
+							matrices.fill(boxX, start + (l * 10) - 1,
+									boxX + textRenderer.getWidth(lines.get(l)) + 3,
 									start + (l * 10) + 9, 0xff000000);
 
-							matrices.drawTextWithShadow(textRenderer, lines.get(l), tooltip.x + 2, start + (l * 10), -1);
+							matrices.drawTextWithShadow(textRenderer, lines.get(l), boxX + 2, start + (l * 10), -1);
 						}
 
 						tooltipY -= lines.size() * 10;

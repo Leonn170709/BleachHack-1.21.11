@@ -17,6 +17,14 @@ accessible    field    net/minecraft/client/network/ClientPlayerInteractionManag
 #   MixinClientConnection/ProtocolScreen.java) - done.
 
 
+# ShaderLoader
+# - For ESP Shader mode to rebuild+hot-swap the entity_outline post effect's uniforms (width/glow/fill/
+#   shape) when the module's settings change, instead of requiring a full resource reload.
+accessible    class    net/minecraft/client/gl/ShaderLoader$Cache
+accessible    field    net/minecraft/client/gl/ShaderLoader    cache    Lnet/minecraft/client/gl/ShaderLoader$Cache;
+accessible    field    net/minecraft/client/gl/ShaderLoader$Cache    postEffectProcessors    Ljava/util/Map;
+
+
 # MinecraftClient
 # - For AccountManager to change the session
 accessible    field    net/minecraft/client/MinecraftClient    session    Lnet/minecraft/client/session/Session;

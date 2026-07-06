@@ -24,6 +24,13 @@ public class WorldRenderer {
 
 	private static final MinecraftClient mc = MinecraftClient.getInstance();
 
+	// Shared/reused like vanilla's Tessellator buffer (1.19.4 used Tessellator.getInstance().getBuffer()
+	// directly, which no longer exists in 1.21.11 - Tessellator's allocator is private now). Allocating a
+	// fresh BufferAllocator per drawText call instead would leak native memory every call since
+	// BufferAllocator is AutoCloseable and was never closed, which under sustained nametag rendering could
+	// eventually make allocations fail and drop text mid-session.
+	private static final BufferAllocator TEXT_BUFFER = new BufferAllocator(256);
+
 	/** Draws text in the world. **/
 	public static void drawText(Text text, double x, double y, double z, double scale, boolean shadow) {
 		drawText(text, x, y, z, 0, 0, scale, shadow);
@@ -42,7 +49,7 @@ public class WorldRenderer {
 
 		int halfWidth = mc.textRenderer.getWidth(text) / 2;
 
-		VertexConsumerProvider.Immediate immediate = VertexConsumerProvider.immediate(new BufferAllocator(256));
+		VertexConsumerProvider.Immediate immediate = VertexConsumerProvider.immediate(TEXT_BUFFER);
 
 		if (fill) {
 			int opacity = (int) (MinecraftClient.getInstance().options.getTextBackgroundOpacity(0.25F) * 255.0F) << 24;
