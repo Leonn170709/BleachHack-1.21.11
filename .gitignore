@@ -32,3 +32,5 @@ bin/
 
 run/
 /commands
+/.claude
+CLAUDE.md
