@@ -13,6 +13,8 @@ import java.util.WeakHashMap;
 
 import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventEntityRender;
+import org.bleachhack.module.ModuleManager;
+import org.bleachhack.module.mods.ESP;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,6 +27,7 @@ import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.math.ColorHelper;
 
 // 1.21.11 decoupled entity rendering from the live Entity - renderLabelIfPresent(and render(...))
 // now only get a snapshotted EntityRenderState (S), which doesn't carry a reference back to the
@@ -40,6 +43,20 @@ public abstract class MixinEntityRenderer<T extends Entity, S extends EntityRend
 	@Inject(method = "updateRenderState", at = @At("RETURN"))
 	private void updateRenderState(T entity, S state, float tickDelta, CallbackInfo ci) {
 		bleachhack$stateToEntity.put(state, entity);
+
+		// ESP "Shader" mode: reuse vanilla's own Glowing-effect outline framebuffer/shader
+		// (EntityRenderState.outlineColor, drawn by the "entity_outline" post-effect) instead of
+		// building a custom silhouette framebuffer/shader from scratch - vanilla already renders any
+		// entity with a non-zero outlineColor as a through-walls colored silhouette outline every
+		// frame, so setting it here (after vanilla's own Glowing-effect check already ran) is all
+		// "Shader" mode needs.
+		ESP esp = ModuleManager.getModule(ESP.class);
+		if (esp.isEnabled() && esp.getSetting(0).asMode().getMode() == 0) {
+			int[] color = esp.getColor(entity);
+			if (color != null) {
+				state.outlineColor = ColorHelper.getArgb(255, color[0], color[1], color[2]);
+			}
+		}
 	}
 
 	@Inject(method = "renderLabelIfPresent", at = @At("HEAD"), cancellable = true)

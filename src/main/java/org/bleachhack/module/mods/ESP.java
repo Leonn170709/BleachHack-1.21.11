@@ -64,38 +64,32 @@ public class ESP extends Module {
 
 	@BleachSubscribe
 	public void onWorldRender(EventWorldRender.Post event) {
+		// "Shader" mode needs no drawing here at all - MixinEntityRenderer sets each highlighted
+		// entity's EntityRenderState.outlineColor directly, which makes vanilla's own Glowing-effect
+		// outline framebuffer/shader (entity_outline post-effect) draw a real through-walls silhouette
+		// outline for it automatically, matching Meteor's "Shader" ESP mode without needing a custom
+		// framebuffer/shader/vertex-consumer of our own.
 		if (getSetting(0).asMode().getMode() == 0) {
-			// 1.21.11: entity rendering no longer takes a VertexConsumerProvider we can wrap to draw a
-			// silhouette-shaped outline (see task #3 notes) - "Shader" mode now draws a through-walls
-			// flat-colored bounding box instead, same as 1.19.4's "Box" mode but ignoring depth test.
-			int fill = getSetting(1).asSlider().getValueInt();
+			return;
+		}
 
-			for (Entity e: mc.world.getEntities()) {
-				int[] color = getColor(e);
+		float width = getSetting(2).asSlider().getValueFloat();
+		int fill = getSetting(3).asSlider().getValueInt();
 
-				if (color != null && fill != 0) {
-					Renderer.drawBoxFillThroughWalls(e.getBoundingBox(), QuadColor.single(color[0], color[1], color[2], fill));
-				}
-			}
-		} else {
-			float width = getSetting(2).asSlider().getValueFloat();
-			int fill = getSetting(3).asSlider().getValueInt();
+		for (Entity e: mc.world.getEntities()) {
+			int[] color = getColor(e);
 
-			for (Entity e: mc.world.getEntities()) {
-				int[] color = getColor(e);
+			if (color != null) {
+				if (width != 0)
+					Renderer.drawBoxOutline(e.getBoundingBox(), QuadColor.single(color[0], color[1], color[2], 255), width);
 
-				if (color != null) {
-					if (width != 0)
-						Renderer.drawBoxOutline(e.getBoundingBox(), QuadColor.single(color[0], color[1], color[2], 255), width);
-
-					if (fill != 0)
-						Renderer.drawBoxFill(e.getBoundingBox(), QuadColor.single(color[0], color[1], color[2], fill));
-				}
+				if (fill != 0)
+					Renderer.drawBoxFill(e.getBoundingBox(), QuadColor.single(color[0], color[1], color[2], fill));
 			}
 		}
 	}
 
-	private int[] getColor(Entity e) {
+	public int[] getColor(Entity e) {
 		if (e == mc.player)
 			return null;
 
