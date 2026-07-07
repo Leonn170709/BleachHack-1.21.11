@@ -62,9 +62,25 @@ public class Ambience extends Module {
 	}
 
 	@Override
+	public void onEnable(boolean inWorld) {
+		super.onEnable(inWorld);
+
+		if (inWorld) {
+			// Grass/foliage/water color are baked into each chunk's mesh at build time, not looked
+			// up live every frame - already-built chunks keep whatever color they had before this
+			// toggled on until something rebuilds them, which makes the override look like it only
+			// works in "some" chunks (whichever happen to rebuild afterward). Forcing every loaded
+			// chunk to rebuild now makes it apply everywhere immediately, matching Xray's onEnable.
+			mc.worldRenderer.reload();
+		}
+	}
+
+	@Override
 	public void onDisable(boolean inWorld) {
-		if (inWorld)
+		if (inWorld) {
 			weatherManager.applyWeather(mc.world);
+			mc.worldRenderer.reload();
+		}
 
 		weatherManager.reset();
 

@@ -101,10 +101,19 @@ public class Xray extends Module {
 
 	@BleachSubscribe
 	public void onRenderBlockDrawSide(EventRenderBlock.ShouldDrawSide event) {
-		if (getSetting(2).asList(Block.class).contains(event.getState().getBlock())) {
-			event.setDrawSide(true);
+		boolean isTarget = getSetting(2).asList(Block.class).contains(event.getState().getBlock());
+		boolean neighborIsTarget = getSetting(2).asList(Block.class).contains(event.getNeighborState().getBlock());
+
+		if (isTarget) {
+			// Always reveal target blocks (even fully enclosed in solid terrain), except the shared
+			// face between two touching target blocks of the same type - nothing to see there.
+			event.setDrawSide(!neighborIsTarget || event.getNeighborState().getBlock() != event.getState().getBlock());
 		} else if (!getSetting(1).asToggle().getState()) {
 			event.setDrawSide(false);
+		} else if (neighborIsTarget) {
+			// Also draw a non-target block's face where it directly touches a target block, so the
+			// target isn't sitting in a fully culled (invisible) socket of translucent terrain.
+			event.setDrawSide(true);
 		}
 	}
 

@@ -41,6 +41,12 @@ public class WindowTextFieldWidget extends WindowWidget {
 		// 1.21.11 bundles mouse click info into a Click record and adds a "double click" flag we
 		// don't track at this call site - matches the old always-false-equivalent single-click behavior.
 		textField.mouseClicked(new Click(mouseX, mouseY, new MouseInput(button, 0)), false);
+
+		// TextFieldWidget.onClick() only moves the cursor now - it used to also grab keyboard focus
+		// itself, but that moved to the vanilla Screen/ParentElement click dispatch, which this custom
+		// Window/WindowWidget system never goes through. Without this, clicking a field positions the
+		// cursor but charTyped()/keyPressed() silently no-op since isFocused() stays false.
+		textField.setFocused(textField.isMouseOver(mouseX, mouseY));
 	}
 
 	@Override

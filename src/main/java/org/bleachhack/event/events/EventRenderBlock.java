@@ -15,6 +15,7 @@ import net.minecraft.client.render.BlockRenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 
 public class EventRenderBlock extends Event {
 
@@ -64,10 +65,22 @@ public class EventRenderBlock extends Event {
 
 	public static class ShouldDrawSide extends EventRenderBlock {
 
+		private final BlockState neighborState;
+		private final Direction side;
 		private Boolean drawSide;
 
-		public ShouldDrawSide(BlockState state) {
+		public ShouldDrawSide(BlockState state, BlockState neighborState, Direction side) {
 			super(state);
+			this.neighborState = neighborState;
+			this.side = side;
+		}
+
+		public BlockState getNeighborState() {
+			return neighborState;
+		}
+
+		public Direction getSide() {
+			return side;
 		}
 
 		public Boolean shouldDrawSide() {

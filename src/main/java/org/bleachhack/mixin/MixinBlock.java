@@ -24,7 +24,7 @@ public class MixinBlock {
 
 	@Inject(method = "shouldDrawSide", at = @At("HEAD"), cancellable = true)
 	private static void shouldDrawSide(BlockState state, BlockState neighborState, Direction side, CallbackInfoReturnable<Boolean> callback) {
-		EventRenderBlock.ShouldDrawSide event = new EventRenderBlock.ShouldDrawSide(state);
+		EventRenderBlock.ShouldDrawSide event = new EventRenderBlock.ShouldDrawSide(state, neighborState, side);
 		BleachHack.eventBus.post(event);
 
 		if (event.shouldDrawSide() != null)

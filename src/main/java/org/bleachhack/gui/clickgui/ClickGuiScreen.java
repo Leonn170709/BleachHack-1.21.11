@@ -14,6 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.bleachhack.gui.FriendManagerScreen;
 import org.bleachhack.gui.clickgui.window.ClickGuiWindow;
 import org.bleachhack.gui.clickgui.window.ClickGuiWindow.Tooltip;
 import org.bleachhack.gui.window.Window;
@@ -142,9 +143,12 @@ public abstract class ClickGuiScreen extends WindowScreen {
 				mouseX >= width / 2 - 50 && mouseX <= width / 2 - 2 && mouseY >= 0 && mouseY <= 12 ? 0x60b070f0 : 0x60606090);
 		Window.fill(matrices, width / 2 + 2, -1, width / 2 + 50, 12,
 				mouseX >= width / 2 + 2 && mouseX <= width / 2 + 50 && mouseY >= 0 && mouseY <= 12 ? 0x60b070f0 : 0x60606090);
+		Window.fill(matrices, width / 2 + 54, -1, width / 2 + 106, 12,
+				mouseX >= width / 2 + 54 && mouseX <= width / 2 + 106 && mouseY >= 0 && mouseY <= 12 ? 0x60b070f0 : 0x60606090);
 
 		matrices.drawCenteredTextWithShadow(textRenderer, "Modules", width / 2 - 26, 2, 0xf0f0f0);
 		matrices.drawCenteredTextWithShadow(textRenderer, "UI", width / 2 + 26, 2, 0xf0f0f0);
+		matrices.drawCenteredTextWithShadow(textRenderer, "Friends", width / 2 + 80, 2, 0xf0f0f0);
 
 		if (warningOpacity > 3) {
 			matrices.drawCenteredTextWithShadow(textRenderer, "UI not available on the main menu!", width / 2, 17,
@@ -170,6 +174,9 @@ public abstract class ClickGuiScreen extends WindowScreen {
 			} else if (mouseX >= width / 2 + 2 && mouseX <= width / 2 + 50 && mouseY >= 0 && mouseY <= 12) {
 				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1f));
 				tryOpen(UIClickGuiScreen.INSTANCE);
+			} else if (mouseX >= width / 2 + 54 && mouseX <= width / 2 + 106 && mouseY >= 0 && mouseY <= 12) {
+				client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1f));
+				client.setScreen(new FriendManagerScreen());
 			} else {
 				lmDown = true;
 				lmHeld = true;
