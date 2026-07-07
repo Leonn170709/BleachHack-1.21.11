@@ -54,6 +54,12 @@ public class MixinKeyboard {
 			return;
 		}
 
+		// Module keybinds (and the quick-prefix chat trigger) should only fire while actually
+		// playing - not while typing in chat, a sign, ClickGui's search bar, or any other screen.
+		if (MinecraftClient.getInstance().currentScreen != null) {
+			return;
+		}
+
 		if (Option.CHAT_QUICK_PREFIX.getValue() && Command.getPrefix().length() == 1 && input.key() == Command.getPrefix().charAt(0)) {
 			MinecraftClient.getInstance().setScreen(new ChatScreen(Command.getPrefix(), false));
 		}

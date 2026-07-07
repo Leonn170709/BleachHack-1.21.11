@@ -17,4 +17,4 @@
 - [x] Add a Friends menu.
 - [x] Add No Ground mode to NoFall (if it's not already implemented).
 - [ ] Optimize the client, especially rendering performance.
-- [ ] Make keybinds only work while in the main game, not while any GUI/screen is open.
+- [x] Make keybinds only work while in the main game, not while any GUI/screen is open.
