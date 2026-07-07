@@ -22,12 +22,15 @@ import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleCategory;
 import org.bleachhack.module.ModuleManager;
 import org.bleachhack.module.mods.ClickGui;
+import org.bleachhack.setting.module.SettingToggle;
 import org.bleachhack.util.io.BleachFileHelper;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 
 
 public class ModuleClickGuiScreen extends ClickGuiScreen {
@@ -48,6 +51,18 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 		searchField.setMaxLength(20);
 		searchField.setSuggestion("Search here");
 		addDrawableChild(searchField);
+	}
+
+	@Override
+	public boolean keyPressed(KeyInput input) {
+		if (input.key() == GLFW.GLFW_KEY_F && (input.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0) {
+			SettingToggle searchBar = ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle();
+			searchBar.setValue(!searchBar.getState());
+			searchField.setFocused(searchBar.getState());
+			return true;
+		}
+
+		return super.keyPressed(input);
 	}
 
 	@Override

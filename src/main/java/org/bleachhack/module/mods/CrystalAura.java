@@ -16,7 +16,6 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -27,7 +26,6 @@ import net.minecraft.util.math.Vec3d;
 import org.bleachhack.event.events.EventTick;
 import org.bleachhack.event.events.EventWorldRender;
 import org.bleachhack.eventbus.BleachSubscribe;
-import org.bleachhack.mixin.AccessorMinecraftClient;
 import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleCategory;
 import org.bleachhack.setting.module.SettingColor;
@@ -44,6 +42,10 @@ import org.bleachhack.util.world.WorldUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 // i am morbidly obese
@@ -53,7 +55,10 @@ public class CrystalAura extends Module {
 	private float renderDamage = 0;
 	private int breakCooldown = 0;
 	private int placeCooldown = 0;
-	private Map<BlockPos, Integer> blacklist = new HashMap<>();
+
+	// ConcurrentHashMap since the Support search thread reads this (via getCrystalPoses) while the
+	// main thread ticks it down at the same time.
+	private Map<BlockPos, Integer> blacklist = new ConcurrentHashMap<>();
 
 	// Support: places an obsidian block via the same item-use-cooldown desync AirPlace exploits,
 	// then waits supportDelay ticks (so the server has time to register it) before placing the
@@ -61,6 +66,16 @@ public class CrystalAura extends Module {
 	// "block's down, waiting out the delay".
 	private Set<BlockPos> pendingSupport = new HashSet<>();
 	private Map<BlockPos, Integer> supportDelay = new HashMap<>();
+	private int supportCooldown = 0;
+
+	// Support treats every replaceable block in range as a candidate, not just existing obsidian/
+	// bedrock, so the scan + per-candidate explosion damage math gets a lot bigger than the normal
+	// path and was blocking the render thread long enough to lag. Only used while Support is on -
+	// the normal path stays synchronous since it's cheap enough not to need this.
+	private ExecutorService searchExecutor;
+	private final AtomicBoolean searching = new AtomicBoolean(false);
+	private volatile Map<BlockPos, Float> cachedPlaceBlocks = new LinkedHashMap<>();
+	private volatile Map<BlockPos, Float> cachedPlaceDamage = new HashMap<>();
 
 	public CrystalAura() {
 		super("CrystalAura", KEY_UNBOUND, ModuleCategory.COMBAT, "Automatically does crystalpvp for you.",
@@ -92,10 +107,31 @@ public class CrystalAura extends Module {
 				new SettingSlider("Range", 0, 6, 4.5, 2).withDesc("Range to place and attack crystals."));
 	}
 
+	@Override
+	public void onEnable(boolean inWorld) {
+		searchExecutor = Executors.newSingleThreadExecutor();
+		super.onEnable(inWorld);
+	}
+
+	@Override
+	public void onDisable(boolean inWorld) {
+		if (searchExecutor != null) {
+			searchExecutor.shutdownNow();
+			searchExecutor = null;
+		}
+		searching.set(false);
+		cachedPlaceBlocks = new LinkedHashMap<>();
+		cachedPlaceDamage = new HashMap<>();
+		pendingSupport.clear();
+		supportDelay.clear();
+		super.onDisable(inWorld);
+	}
+
 	@BleachSubscribe
 	public void onTick(EventTick event) {
 		breakCooldown = Math.max(0, breakCooldown - 1);
 		placeCooldown = Math.max(0, placeCooldown - 1);
+		supportCooldown = Math.max(0, supportCooldown - 1);
 
 		for (Entry<BlockPos, Integer> e : new HashMap<>(blacklist).entrySet()) {
 			if (e.getValue() > 0) {
@@ -198,50 +234,63 @@ public class CrystalAura extends Module {
 				return;
 			}
 
-			Map<BlockPos, Float> placeBlocks = new LinkedHashMap<>();
-			Map<BlockPos, Float> placeDamage = new HashMap<>();
+			boolean supportOn = placeToggle.getChild(9).asToggle().getState();
+			double minDmg = placeToggle.getChild(4).asSlider().getValue();
+			double minRatio = placeToggle.getChild(5).asSlider().getValue();
 
-			for (Vec3d v : getCrystalPoses()) {
-				float playerDamg = DamageUtils.getExplosionDamage(v, 6f, mc.player);
+			Map<BlockPos, Float> placeBlocks;
+			Map<BlockPos, Float> placeDamage;
 
-				if (DamageUtils.willKill(mc.player, playerDamg))
-					continue;
-
-				for (LivingEntity e : targets) {
-					float targetDamg = DamageUtils.getExplosionDamage(v, 6f, e);
-					if (DamageUtils.willPop(mc.player, playerDamg) && !DamageUtils.willPopOrKill(e, targetDamg)) {
-						continue;
-					}
-
-					if (targetDamg >= placeToggle.getChild(4).asSlider().getValue()) {
-						float ratio = playerDamg == 0 ? targetDamg : targetDamg / playerDamg;
-
-						if (ratio > placeToggle.getChild(5).asSlider().getValue()) {
-							BlockPos pos = BlockPos.ofFloored(v).down();
-							placeBlocks.put(pos, ratio);
-							placeDamage.merge(pos, targetDamg, Math::max);
+			if (supportOn) {
+				// Support turns most of the range into a candidate (any replaceable block, not just
+				// existing obsidian/bedrock), so the scan + per-candidate explosion damage math is
+				// heavy enough to lag the render thread. Run it in the background instead and place
+				// off whatever the last completed scan found - one scan in flight at a time, so scans
+				// don't pile up faster than they finish.
+				if (searchExecutor != null && searching.compareAndSet(false, true)) {
+					searchExecutor.submit(() -> {
+						try {
+							ScoreResult result = scoreCandidates(targets, minDmg, minRatio);
+							cachedPlaceBlocks = result.blocks();
+							cachedPlaceDamage = result.damage();
+						} catch (Exception ex) {
+							// World/entity state can shift mid-scan since it's read off-thread while
+							// the game keeps ticking - just drop this cycle's result and retry next.
+						} finally {
+							searching.set(false);
 						}
-					}
+					});
 				}
-			}
 
-			placeBlocks = placeBlocks.entrySet().stream()
-					.sorted((b1, b2) -> Float.compare(b2.getValue(), b1.getValue()))
-					.collect(Collectors.toMap(Entry::getKey, Entry::getValue, (x, y) -> y, LinkedHashMap::new));
+				placeBlocks = cachedPlaceBlocks;
+				placeDamage = cachedPlaceDamage;
+			} else {
+				ScoreResult result = scoreCandidates(targets, minDmg, minRatio);
+				placeBlocks = result.blocks();
+				placeDamage = result.damage();
+			}
 
 			int oldSlot = mc.player.getInventory().getSelectedSlot();
 			int places = 0;
 			for (Entry<BlockPos, Float> e : placeBlocks.entrySet()) {
 				BlockPos block = e.getKey();
 
-				if (placeToggle.getChild(9).asToggle().getState() && !isSolidBase(block)) {
-					placeSupportBlock(block);
+				// One support block per tick, max - placing several in the same tick is exactly the
+				// kind of burst that gets them rubberbanded/invalidated server-side.
+				if (supportOn && !isSolidBase(block)) {
+					if (supportCooldown <= 0) {
+						placeSupportBlock(block);
+						supportCooldown = 1;
+					}
 					pendingSupport.add(block);
 					continue;
 				}
 
 				if (pendingSupport.remove(block)) {
-					supportDelay.put(block, placeToggle.getChild(9).asToggle().getChild(0).asSlider().getValueInt());
+					// Even at a Support Delay of 0, the support block and the crystal still can't
+					// land in the same tick without looking like the same burst - one tick minimum.
+					int delay = Math.max(1, placeToggle.getChild(9).asToggle().getChild(0).asSlider().getValueInt());
+					supportDelay.put(block, delay);
 				}
 
 				if (supportDelay.getOrDefault(block, 0) > 0) {
@@ -298,6 +347,45 @@ public class CrystalAura extends Module {
 		}
 	}
 
+	private record ScoreResult(Map<BlockPos, Float> blocks, Map<BlockPos, Float> damage) {}
+
+	// Read-only (world/entity queries + math, no packets/rotation/inventory changes) so it's safe
+	// to run off the main thread for Support.
+	private ScoreResult scoreCandidates(List<LivingEntity> targets, double minDmg, double minRatio) {
+		Map<BlockPos, Float> placeBlocks = new LinkedHashMap<>();
+		Map<BlockPos, Float> placeDamage = new HashMap<>();
+
+		for (Vec3d v : getCrystalPoses()) {
+			float playerDamg = DamageUtils.getExplosionDamage(v, 6f, mc.player);
+
+			if (DamageUtils.willKill(mc.player, playerDamg))
+				continue;
+
+			for (LivingEntity e : targets) {
+				float targetDamg = DamageUtils.getExplosionDamage(v, 6f, e);
+				if (DamageUtils.willPop(mc.player, playerDamg) && !DamageUtils.willPopOrKill(e, targetDamg)) {
+					continue;
+				}
+
+				if (targetDamg >= minDmg) {
+					float ratio = playerDamg == 0 ? targetDamg : targetDamg / playerDamg;
+
+					if (ratio > minRatio) {
+						BlockPos pos = BlockPos.ofFloored(v).down();
+						placeBlocks.put(pos, ratio);
+						placeDamage.merge(pos, targetDamg, Math::max);
+					}
+				}
+			}
+		}
+
+		Map<BlockPos, Float> sorted = placeBlocks.entrySet().stream()
+				.sorted((b1, b2) -> Float.compare(b2.getValue(), b1.getValue()))
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue, (x, y) -> y, LinkedHashMap::new));
+
+		return new ScoreResult(sorted, placeDamage);
+	}
+
 	@BleachSubscribe
 	public void onRenderWorld(EventWorldRender.Post event) {
 		if (this.render != null) {
@@ -314,11 +402,24 @@ public class CrystalAura extends Module {
 	public Set<Vec3d> getCrystalPoses() {
 		Set<Vec3d> poses = new HashSet<>();
 
-		int range = (int) Math.floor(getSetting(8).asSlider().getValue());
-		for (int x = -range; x <= range; x++) {
-			for (int y = -range; y <= range; y++) {
-				for (int z = -range; z <= range; z++) {
-					BlockPos basePos = BlockPos.ofFloored(mc.player.getEyePos()).add(x, y, z);
+		double range = getSetting(8).asSlider().getValue();
+		int intRange = (int) Math.floor(range);
+		Vec3d playerPos = mc.player.getEntityPos();
+		BlockPos eyeBlock = BlockPos.ofFloored(mc.player.getEyePos());
+
+		for (int x = -intRange; x <= intRange; x++) {
+			for (int y = -intRange; y <= intRange; y++) {
+				for (int z = -intRange; z <= intRange; z++) {
+					BlockPos basePos = eyeBlock.add(x, y, z);
+					Vec3d pos = Vec3d.of(basePos).add(0.5, 1, 0.5);
+
+					// Cheapest check first - the loop bounds are a cube, but the real limit is a
+					// sphere, so this alone skips the corners before any world/entity lookups run.
+					// That corner waste barely mattered against the old obsidian/bedrock-only check
+					// (it exits just as fast), but Support treats most of the cube as a candidate,
+					// so skipping it early here matters a lot more now.
+					if (playerPos.distanceTo(pos) > range + 0.25)
+						continue;
 
 					if (!canPlace(basePos) || (blacklist.containsKey(basePos) && getSetting(4).asToggle().getChild(2).asToggle().getState()))
 						continue;
@@ -337,8 +438,7 @@ public class CrystalAura extends Module {
 						}
 					}
 
-					if (mc.player.getEntityPos().distanceTo(Vec3d.of(basePos).add(0.5, 1, 0.5)) <= getSetting(8).asSlider().getValue() + 0.25)
-						poses.add(Vec3d.of(basePos).add(0.5, 1, 0.5));
+					poses.add(pos);
 				}
 			}
 		}
@@ -366,21 +466,41 @@ public class CrystalAura extends Module {
 		return mc.world.getOtherEntities(null, new Box(Vec3d.of(placePos), Vec3d.of(placePos.up(oldPlace ? 2 : 1)))).isEmpty();
 	}
 
-	// Same item-use-cooldown desync AirPlace exploits (see AirPlace.java) - the interact packet
-	// only sticks against a non-solid block during a narrow cooldown window, so this just keeps
-	// trying every tick until that window lines up. No confirmation the block actually landed;
-	// supportDelay is a flat wait, not a check.
+	// Meteor's AirPlace doesn't rely on any cooldown/timing trick - it just builds its own
+	// BlockHitResult and feeds it straight into the normal interact call, instead of the crosshair
+	// raycast (which reports MISS on a replaceable block and would otherwise stop vanilla from
+	// ever attempting a placement there). CrystalAura's own crystal placement already does exactly
+	// that for solid blocks, so the support block just needs the same call aimed at the air spot.
 	private void placeSupportBlock(BlockPos pos) {
-		if (((AccessorMinecraftClient) mc).getItemUseCooldown() != 4) {
-			return;
-		}
-
 		int obsidianSlot = InventoryUtils.getSlot(true, i -> mc.player.getInventory().getStack(i).getItem() == Items.OBSIDIAN);
 		if (obsidianSlot == -1) {
 			return;
 		}
 
 		Hand hand = InventoryUtils.selectSlot(obsidianSlot);
-		mc.getNetworkHandler().sendPacket(new PlayerInteractBlockC2SPacket(hand, new BlockHitResult(Vec3d.ofCenter(pos), Direction.UP, pos, false), 0));
+		Vec3d eyeVec = mc.player.getEyePos();
+
+		// Prefer aiming at a real solid neighbor's face when one happens to be there, purely so the
+		// resulting hitResult/rotation looks legitimate - falls back to aiming straight at the
+		// empty spot itself, which vanilla places into directly since it's replaceable.
+		BlockPos clickedPos = pos;
+		Direction side = Direction.UP;
+		Vec3d vec = Vec3d.ofCenter(pos);
+
+		for (Direction d : Direction.values()) {
+			BlockPos neighbor = pos.offset(d);
+			if (!mc.world.getBlockState(neighbor).isSolidBlock(mc.world, neighbor)) {
+				continue;
+			}
+
+			Vec3d vd = WorldUtils.getLegitLookPos(neighbor, d.getOpposite(), true, 5);
+			if (vd != null && eyeVec.distanceTo(vd) <= eyeVec.distanceTo(vec)) {
+				vec = vd;
+				side = d.getOpposite();
+				clickedPos = neighbor;
+			}
+		}
+
+		mc.interactionManager.interactBlock(mc.player, hand, new BlockHitResult(vec, side, clickedPos, false));
 	}
 }
