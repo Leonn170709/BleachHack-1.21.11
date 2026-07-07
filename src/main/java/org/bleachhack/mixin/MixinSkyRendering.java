@@ -19,6 +19,7 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.SkyRendering;
 import net.minecraft.client.render.state.SkyRenderState;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.world.dimension.DimensionType;
 
 // 1.21.11 replaced the old DimensionEffects.getSkyColor() override point with a generic
 // EnvironmentAttributes system read once per frame in SkyRendering.updateRenderState() - this is
@@ -31,6 +32,14 @@ public class MixinSkyRendering {
 	private void updateRenderState(ClientWorld world, float tickProgress, Camera camera, SkyRenderState state, CallbackInfo info) {
 		Ambience ambience = ModuleManager.getModule(Ambience.class);
 		if (!ambience.isEnabled()) {
+			return;
+		}
+
+		// End Skybox wins over Sky Color - Ambience.getSkyColorOverride() already returns null while
+		// it's active, since the End's own skybox rendering doesn't read skyColor at all.
+		DimensionType.Skybox skybox = ambience.getSkyboxOverride();
+		if (skybox != null) {
+			state.skybox = skybox;
 			return;
 		}
 

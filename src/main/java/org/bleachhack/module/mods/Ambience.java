@@ -23,6 +23,7 @@ import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
 import net.minecraft.world.World;
+import net.minecraft.world.dimension.DimensionType;
 
 public class Ambience extends Module {
 
@@ -149,13 +150,14 @@ public class Ambience extends Module {
 	// getCloudsColor/getDimensionEffects/getFogColorOverride) with a generic, position/biome-weighted
 	// EnvironmentAttributes system (World.getEnvironmentAttributes().getAttributeValue(...)). The old
 	// ClientWorld/DimensionEffects mixins that fired these hooks had to be removed since their target
-	// methods no longer exist. Sky color is now overridden directly at render time instead, from
-	// MixinSkyRendering (see getSkyColorOverride()) rather than through the attribute system itself -
-	// SkyRendering.updateRenderState() is the single place that reads SKY_COLOR_VISUAL into the
-	// render state, so overwriting it there after the fact is simpler than modeling our override as
-	// another EnvironmentAttributeFunction. "End Skybox" is a separate, still-unimplemented toggle
-	// (End dimension rendering doesn't use skyColor at all - see DimensionType.Skybox.END - so this
-	// would need a different hook if ever implemented).
+	// methods no longer exist. Sky color and skybox choice are now overridden directly at render time
+	// instead, from MixinSkyRendering (see getSkyColorOverride()/getSkyboxOverride()) rather than
+	// through the attribute system itself - SkyRendering.updateRenderState() is the single place that
+	// reads SKY_COLOR_VISUAL and the dimension's skybox type into the render state, so overwriting
+	// them there after the fact is simpler than modeling our override as another
+	// EnvironmentAttributeFunction. End Skybox forces DimensionType.Skybox.END regardless of the
+	// current dimension and disables the Sky Color override while active, since the End's own skybox
+	// rendering doesn't use skyColor at all.
 
 	private SettingToggle getCurrentDimSetting() {
 		return getSetting(mc.world.getRegistryKey() == World.END ? 4 : mc.world.getRegistryKey() == World.NETHER ? 3 : 2).asToggle();
@@ -163,7 +165,7 @@ public class Ambience extends Module {
 
 	// Used by MixinSkyRendering; null means "don't override".
 	public Integer getSkyColorOverride() {
-		if (mc.world == null) {
+		if (mc.world == null || isEndSkyboxActive()) {
 			return null;
 		}
 
@@ -173,6 +175,20 @@ public class Ambience extends Module {
 		}
 
 		return skyColor.getChild(1).asColor().getRGB();
+	}
+
+	// Used by MixinSkyRendering; null means "don't override".
+	public DimensionType.Skybox getSkyboxOverride() {
+		return isEndSkyboxActive() ? DimensionType.Skybox.END : null;
+	}
+
+	private boolean isEndSkyboxActive() {
+		if (mc.world == null) {
+			return false;
+		}
+
+		SettingToggle skyColor = getCurrentDimSetting().getChild(0).asToggle();
+		return getCurrentDimSetting().getState() && skyColor.getState() && skyColor.getChild(0).asToggle().getState();
 	}
 
 	private static class WeatherManager {
