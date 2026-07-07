@@ -58,22 +58,22 @@ public class ProjectileSimulator {
 				if (arrowStack.isEmpty()) {
 					arrowStack = new ItemStack(Items.ARROW);
 				}
-				Entity e = new ArrowEntity(mc.world, mc.player, arrowStack, hand);
+				Entity e = new ArrowEntity(mc.world, thrower, arrowStack, hand);
 				initProjectile(e, thrower, 0f, charged * 3);
 				return e;
 			}
 		} else if (hand.getItem() instanceof SnowballItem || hand.getItem() instanceof EggItem || hand.getItem() instanceof EnderPearlItem) {
-			Entity e = new SnowballEntity(mc.world, mc.player, hand);
+			Entity e = new SnowballEntity(mc.world, thrower, hand);
 			initProjectile(e, thrower, 0f, 1.5f);
 			return e;
 		} else if (hand.getItem() instanceof ExperienceBottleItem) {
-			Entity e = new ExperienceBottleEntity(mc.world, mc.player, hand);
+			Entity e = new ExperienceBottleEntity(mc.world, thrower, hand);
 			initProjectile(e, thrower, -20f, 0.7f);
 			return e;
 		} else if (hand.getItem() instanceof ThrowablePotionItem) {
 			Entity e = hand.getItem() instanceof LingeringPotionItem
-					? new LingeringPotionEntity(mc.world, mc.player, hand)
-					: new SplashPotionEntity(mc.world, mc.player, hand);
+					? new LingeringPotionEntity(mc.world, thrower, hand)
+					: new SplashPotionEntity(mc.world, thrower, hand);
 			initProjectile(e, thrower, -20f, 0.5f);
 			return e;
 		} else if (hand.getItem() instanceof TridentItem) {

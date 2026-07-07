@@ -23,11 +23,20 @@ import net.minecraft.entity.effect.StatusEffects;
 public class SpeedMine extends Module {
 
 	public SpeedMine() {
+		this(new SettingMode("Mode", "Haste", "OG").withDesc("SpeedMine Mode."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicates below capture that local variable instead.
+	private SpeedMine(SettingMode mode) {
 		super("SpeedMine", KEY_UNBOUND, ModuleCategory.EXPLOITS, "Allows you to break blocks faster.",
-				new SettingMode("Mode", "Haste", "OG").withDesc("SpeedMine Mode."),
-				new SettingSlider("HasteLvl", 1, 3, 1, 0).withDesc("Haste Level."),
+				mode,
+				new SettingSlider("HasteLvl", 1, 3, 1, 0).withDesc("Haste Level.")
+						.visibleWhen(() -> mode.getMode() == 0),
 				new SettingSlider("Cooldown", 0, 4, 1, 0).withDesc("Cooldown between mining blocks (in ticks)."),
-				new SettingSlider("Multiplier", 1, 3, 1.3, 1).withDesc("OG Mode multiplier."),
+				new SettingSlider("Multiplier", 1, 3, 1.3, 1).withDesc("OG Mode multiplier.")
+						.visibleWhen(() -> mode.getMode() == 1),
 				new SettingToggle("AntiFatigue", true).withDesc("Removes the fatigue effect."),
 				new SettingToggle("AntiOffGround", true).withDesc("Removing mining slowness from being offground."));
 	}

@@ -52,7 +52,20 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 
 	@Override
 	public float getScale() {
-		return ModuleManager.getModule(ClickGui.class).getSetting(3).asSlider().getValueInt() / 100f;
+		ClickGui clickGui = ModuleManager.getModule(ClickGui.class);
+
+		float manual = clickGui.getSetting(3).asSlider().getValueInt() / 100f;
+		return clickGui.getSetting(4).asToggle().getState() ? computeAutoFitScale() * manual : manual;
+	}
+
+	// Minecraft's GUI Scale changes how many virtual pixels fit on screen, which otherwise makes
+	// the clickgui visibly bigger/smaller as you change it (same virtual size, different real
+	// size). Countering that 1:1 keeps the clickgui's real on-screen size constant regardless of
+	// GUI Scale - 2 is the reference factor (matches the manual Scale slider's 100% default on a
+	// typical GUI Scale of 2).
+	private float computeAutoFitScale() {
+		int factor = Math.max(1, client.getWindow().getScaleFactor());
+		return Math.max(0.5f, Math.min(2f, 2f / factor));
 	}
 
 	public void initWindows() {

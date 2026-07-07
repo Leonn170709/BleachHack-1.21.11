@@ -9,7 +9,6 @@
 package org.bleachhack.util;
 
 import java.util.Collection;
-import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -34,7 +33,7 @@ public class FriendManager {
 	}
 
 	public void add(String name) {
-		name = Formatting.strip(name).toLowerCase(Locale.ENGLISH);
+		name = Formatting.strip(name);
 
 		if (!name.isEmpty()) {
 			friends.add(name);
@@ -44,14 +43,14 @@ public class FriendManager {
 	public void addAll(Collection<String> names) {
 		names.forEach(this::add);
 	}
-	
+
 	public void remove(Entity entity) {
 		if (entity instanceof PlayerEntity)
 			remove(entity.getName().getString());
 	}
 
 	public void remove(String name) {
-		name = Formatting.strip(name).toLowerCase(Locale.ENGLISH);
+		name = Formatting.strip(name);
 
 		if (!name.isEmpty()) {
 			friends.remove(name);
@@ -61,16 +60,16 @@ public class FriendManager {
 	public void removeAll(Collection<String> names) {
 		names.forEach(this::remove);
 	}
-	
+
 	public boolean has(Entity entity) {
 		if (entity instanceof PlayerEntity)
 			return has(entity.getName().getString());
-		
+
 		return false;
 	}
 
 	public boolean has(String name) {
-		name = Formatting.strip(name).toLowerCase(Locale.ENGLISH);
+		name = Formatting.strip(name);
 
 		if (!name.isEmpty()) {
 			return friends.contains(name);

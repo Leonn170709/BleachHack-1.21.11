@@ -35,11 +35,21 @@ public class AirPlace extends Module {
 	private boolean pressed;
 
 	public AirPlace() {
+		this(new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Render mode
+	// setting as a constructor parameter first lets the predicates below capture that local
+	// variable instead, even though it's nested inside Highlight's children.
+	private AirPlace(SettingMode renderMode) {
 		super("AirPlace", KEY_UNBOUND, ModuleCategory.WORLD, "Allows you to place blocks in thin air.",
 				new SettingToggle("Highlight", true).withDesc("Renders an overlay where it will place the block.").withChildren(
-						new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."),
-						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The width/thickness of the box lines."),
-						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill."),
+						renderMode,
+						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The width/thickness of the box lines.")
+								.visibleWhen(() -> renderMode.getMode() != 2),
+						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill.")
+								.visibleWhen(() -> renderMode.getMode() != 1),
 						new SettingColor("Color", 128, 128, 128).withDesc("The color of the highlight.")),
 				new SettingMode("Mode", "Multi", "Single").withDesc("Whether to place a block once per click or multiple blocks if the button is held down."));
 	}

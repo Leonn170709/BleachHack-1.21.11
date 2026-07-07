@@ -41,6 +41,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Direction.Axis;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.RaycastContext;
+import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
 
 public class WorldUtils {
@@ -134,6 +135,68 @@ public class WorldUtils {
 		}
 
 		return false;
+	}
+
+	// Shared by the packet-teleport combat modules (Mace Kill, Spear Kill, Infinite Reach,
+	// Projectile Launcher) - a candidate landing spot is unsafe if it's in an unloaded chunk, would
+	// put the entity's hitbox in lava/collision, or would put it inside another entity.
+	public static boolean isTeleportUnsafe(Entity entity, Vec3d pos) {
+		BlockPos blockPos = BlockPos.ofFloored(pos);
+		if (mc.world == null || mc.world.getChunk(blockPos.getX() >> 4, blockPos.getZ() >> 4, ChunkStatus.FULL, false) == null) {
+			return true;
+		}
+
+		Box box = entity.getBoundingBox().offset(pos.subtract(entity.getEntityPos()));
+
+		for (int x = (int) Math.floor(box.minX); x < Math.ceil(box.maxX); x++) {
+			for (int y = (int) Math.floor(box.minY); y < Math.ceil(box.maxY); y++) {
+				for (int z = (int) Math.floor(box.minZ); z < Math.ceil(box.maxZ); z++) {
+					if (mc.world.getBlockState(new BlockPos(x, y, z)).isOf(Blocks.LAVA)) {
+						return true;
+					}
+				}
+			}
+		}
+
+		if (doesBoxCollide(box)) {
+			return true;
+		}
+
+		for (Entity e : mc.world.getOtherEntities(entity, box)) {
+			if (e.isCollidable(entity)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// Randomized small nudge away from a landing spot (breaks up an otherwise identical repeated
+	// teleport pattern), falling back to a vertical-only nudge or the exact position if every
+	// horizontal direction happens to be blocked.
+	public static Vec3d findSafeOffset(Entity entity, Vec3d base, double horizontal, double vertical) {
+		List<Vec3d> offsets = new ArrayList<>(List.of(
+				base.add(horizontal, vertical, 0), base.add(-horizontal, vertical, 0),
+				base.add(0, vertical, horizontal), base.add(0, vertical, -horizontal),
+				base.add(horizontal, vertical, horizontal), base.add(-horizontal, vertical, -horizontal),
+				base.add(-horizontal, vertical, horizontal), base.add(horizontal, vertical, -horizontal)));
+		java.util.Collections.shuffle(offsets);
+
+		for (Vec3d offset : offsets) {
+			if (!isTeleportUnsafe(entity, offset)) {
+				return offset;
+			}
+		}
+
+		Vec3d verticalOnly = base.add(0, vertical, 0);
+		return !isTeleportUnsafe(entity, verticalOnly) ? verticalOnly : base;
+	}
+
+	// Sends a bare position update - used by the packet-teleport modules to claim a new position
+	// server-side for a single tick without going through normal movement/collision.
+	public static void sendTeleport(Vec3d pos) {
+		mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
+				pos.x, pos.y, pos.z, false, mc.player.horizontalCollision));
 	}
 
 	public static boolean placeBlock(BlockPos pos, int slot, SettingRotate sr, boolean forceLegit, boolean airPlace, boolean swingHand) {

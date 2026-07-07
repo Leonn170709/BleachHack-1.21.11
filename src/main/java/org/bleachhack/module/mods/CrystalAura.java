@@ -16,6 +16,8 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -25,6 +27,7 @@ import net.minecraft.util.math.Vec3d;
 import org.bleachhack.event.events.EventTick;
 import org.bleachhack.event.events.EventWorldRender;
 import org.bleachhack.eventbus.BleachSubscribe;
+import org.bleachhack.mixin.AccessorMinecraftClient;
 import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleCategory;
 import org.bleachhack.setting.module.SettingColor;
@@ -33,6 +36,7 @@ import org.bleachhack.setting.module.SettingSlider;
 import org.bleachhack.setting.module.SettingToggle;
 import org.bleachhack.util.InventoryUtils;
 import org.bleachhack.util.render.Renderer;
+import org.bleachhack.util.render.WorldRenderer;
 import org.bleachhack.util.render.color.QuadColor;
 import org.bleachhack.util.world.DamageUtils;
 import org.bleachhack.util.world.EntityUtils;
@@ -46,9 +50,17 @@ import java.util.stream.Collectors;
 public class CrystalAura extends Module {
 
 	private BlockPos render = null;
+	private float renderDamage = 0;
 	private int breakCooldown = 0;
 	private int placeCooldown = 0;
 	private Map<BlockPos, Integer> blacklist = new HashMap<>();
+
+	// Support: places an obsidian block via the same item-use-cooldown desync AirPlace exploits,
+	// then waits supportDelay ticks (so the server has time to register it) before placing the
+	// crystal on top. pendingSupport = "still trying to get the block down", supportDelay =
+	// "block's down, waiting out the delay".
+	private Set<BlockPos> pendingSupport = new HashSet<>();
+	private Map<BlockPos, Integer> supportDelay = new HashMap<>();
 
 	public CrystalAura() {
 		super("CrystalAura", KEY_UNBOUND, ModuleCategory.COMBAT, "Automatically does crystalpvp for you.",
@@ -71,7 +83,10 @@ public class CrystalAura extends Module {
 						new SettingSlider("MinRatio", 0.5, 6, 2, 1).withDesc("Minimum damage ratio to place a crystal at (Target dmg/Player dmg)."),
 						new SettingSlider("CPT", 1, 10, 2, 0).withDesc("How many crystals to place per tick."),
 						new SettingSlider("Cooldown", 0, 10, 0, 0).withDesc("How many ticks to wait before placing the next batch of crystals."),
-						new SettingColor("Place Color", 178, 178, 255).withDesc("The color of the block you're placing crystals on.")),
+						new SettingColor("Place Color", 178, 178, 255).withDesc("The color of the block you're placing crystals on."),
+						new SettingToggle("Support", false).withDesc("Places an obsidian support block (using the same trick as AirPlace) when a good spot has no solid block to place the crystal on.").withChildren(
+								new SettingSlider("Support Delay", 0, 10, 2, 0).withDesc("Ticks to wait after placing the support block before placing the crystal on it."))),
+				new SettingToggle("Render Damage", true).withDesc("Shows the expected damage above the last block you placed a crystal on."),
 				new SettingToggle("SameTick", false).withDesc("Enables exploding and placing crystals at the same tick."),
 				new SettingRotate(false).withDesc("Rotates to crystals."),
 				new SettingSlider("Range", 0, 6, 4.5, 2).withDesc("Range to place and attack crystals."));
@@ -87,6 +102,12 @@ public class CrystalAura extends Module {
 				blacklist.replace(e.getKey(), e.getValue() - 1);
 			} else {
 				blacklist.remove(e.getKey());
+			}
+		}
+
+		for (Entry<BlockPos, Integer> e : new HashMap<>(supportDelay).entrySet()) {
+			if (e.getValue() > 0) {
+				supportDelay.replace(e.getKey(), e.getValue() - 1);
 			}
 		}
 
@@ -118,7 +139,7 @@ public class CrystalAura extends Module {
 		if (explodeToggle.getState() && !nearestCrystals.isEmpty() && breakCooldown <= 0) {
 			boolean end = false;
 			for (EndCrystalEntity c : nearestCrystals) {
-				if (mc.player.distanceTo(c) > getSetting(7).asSlider().getValue()
+				if (mc.player.distanceTo(c) > getSetting(8).asSlider().getValue()
 						|| mc.world.getOtherEntities(null, new Box(c.getEntityPos(), c.getEntityPos()).expand(7), targets::contains).isEmpty())
 					continue;
 
@@ -131,7 +152,7 @@ public class CrystalAura extends Module {
 					InventoryUtils.selectSlot(false, true, Comparator.comparing(i -> DamageUtils.getItemAttackDamage(mc.player.getInventory().getStack(i))));
 				}
 
-				if (getSetting(6).asRotate().getState()) {
+				if (getSetting(7).asRotate().getState()) {
 					Vec3d eyeVec = mc.player.getEyePos();
 					Vec3d v = new Vec3d(c.getX(), c.getY() + 0.5, c.getZ());
 					for (Direction d : Direction.values()) {
@@ -141,7 +162,7 @@ public class CrystalAura extends Module {
 						}
 					}
 
-					WorldUtils.facePosAuto(v.x, v.y, v.z, getSetting(6).asRotate());
+					WorldUtils.facePosAuto(v.x, v.y, v.z, getSetting(7).asRotate());
 				}
 
 				mc.interactionManager.attackEntity(mc.player, c);
@@ -159,7 +180,7 @@ public class CrystalAura extends Module {
 
 			breakCooldown = explodeToggle.getChild(3).asSlider().getValueInt() + 1;
 
-			if (!getSetting(5).asToggle().getState() && end) {
+			if (!getSetting(6).asToggle().getState() && end) {
 				return;
 			}
 		}
@@ -178,6 +199,7 @@ public class CrystalAura extends Module {
 			}
 
 			Map<BlockPos, Float> placeBlocks = new LinkedHashMap<>();
+			Map<BlockPos, Float> placeDamage = new HashMap<>();
 
 			for (Vec3d v : getCrystalPoses()) {
 				float playerDamg = DamageUtils.getExplosionDamage(v, 6f, mc.player);
@@ -195,7 +217,9 @@ public class CrystalAura extends Module {
 						float ratio = playerDamg == 0 ? targetDamg : targetDamg / playerDamg;
 
 						if (ratio > placeToggle.getChild(5).asSlider().getValue()) {
-							placeBlocks.put(BlockPos.ofFloored(v).down(), ratio);
+							BlockPos pos = BlockPos.ofFloored(v).down();
+							placeBlocks.put(pos, ratio);
+							placeDamage.merge(pos, targetDamg, Math::max);
 						}
 					}
 				}
@@ -209,6 +233,21 @@ public class CrystalAura extends Module {
 			int places = 0;
 			for (Entry<BlockPos, Float> e : placeBlocks.entrySet()) {
 				BlockPos block = e.getKey();
+
+				if (placeToggle.getChild(9).asToggle().getState() && !isSolidBase(block)) {
+					placeSupportBlock(block);
+					pendingSupport.add(block);
+					continue;
+				}
+
+				if (pendingSupport.remove(block)) {
+					supportDelay.put(block, placeToggle.getChild(9).asToggle().getChild(0).asSlider().getValueInt());
+				}
+
+				if (supportDelay.getOrDefault(block, 0) > 0) {
+					continue;
+				}
+				supportDelay.remove(block);
 
 				Vec3d eyeVec = mc.player.getEyePos();
 
@@ -232,13 +271,14 @@ public class CrystalAura extends Module {
 				if (placeToggle.getChild(2).asToggle().getState())
 					blacklist.put(block, 4);
 
-				if (getSetting(6).asRotate().getState()) {
-					WorldUtils.facePosAuto(vec.x, vec.y, vec.z, getSetting(6).asRotate());
+				if (getSetting(7).asRotate().getState()) {
+					WorldUtils.facePosAuto(vec.x, vec.y, vec.z, getSetting(7).asRotate());
 				}
 
 				Hand hand = InventoryUtils.selectSlot(crystalSlot);
 
 				render = block;
+				renderDamage = placeDamage.getOrDefault(block, 0f);
 				mc.interactionManager.interactBlock(mc.player, hand, new BlockHitResult(vec, dir, block, false));
 
 				places++;
@@ -263,13 +303,18 @@ public class CrystalAura extends Module {
 		if (this.render != null) {
 			int[] col = getSetting(4).asToggle().getChild(8).asColor().getRGBArray();
 			Renderer.drawBoxBoth(render, QuadColor.single(col[0], col[1], col[2], 100), 2.5f);
+
+			if (getSetting(5).asToggle().getState()) {
+				WorldRenderer.drawText(Text.literal(String.format("%.1f", renderDamage)),
+						render.getX() + 0.5, render.getY() + 1.3, render.getZ() + 0.5, 1.5, true);
+			}
 		}
 	}
 
 	public Set<Vec3d> getCrystalPoses() {
 		Set<Vec3d> poses = new HashSet<>();
 
-		int range = (int) Math.floor(getSetting(7).asSlider().getValue());
+		int range = (int) Math.floor(getSetting(8).asSlider().getValue());
 		for (int x = -range; x <= range; x++) {
 			for (int y = -range; y <= range; y++) {
 				for (int z = -range; z <= range; z++) {
@@ -292,7 +337,7 @@ public class CrystalAura extends Module {
 						}
 					}
 
-					if (mc.player.getEntityPos().distanceTo(Vec3d.of(basePos).add(0.5, 1, 0.5)) <= getSetting(7).asSlider().getValue() + 0.25)
+					if (mc.player.getEntityPos().distanceTo(Vec3d.of(basePos).add(0.5, 1, 0.5)) <= getSetting(8).asSlider().getValue() + 0.25)
 						poses.add(Vec3d.of(basePos).add(0.5, 1, 0.5));
 				}
 			}
@@ -301,11 +346,17 @@ public class CrystalAura extends Module {
 		return poses;
 	}
 
-	private boolean canPlace(BlockPos basePos) {
+	private boolean isSolidBase(BlockPos basePos) {
 		BlockState baseState = mc.world.getBlockState(basePos);
+		return baseState.getBlock() == Blocks.BEDROCK || baseState.getBlock() == Blocks.OBSIDIAN;
+	}
 
-		if (baseState.getBlock() != Blocks.BEDROCK && baseState.getBlock() != Blocks.OBSIDIAN)
-			return false;
+	private boolean canPlace(BlockPos basePos) {
+		if (!isSolidBase(basePos)) {
+			boolean supportOn = getSetting(4).asToggle().getChild(9).asToggle().getState();
+			if (!supportOn || !mc.world.getBlockState(basePos).isReplaceable())
+				return false;
+		}
 
 		boolean oldPlace = getSetting(4).asToggle().getChild(1).asToggle().getState();
 		BlockPos placePos = basePos.up();
@@ -313,5 +364,23 @@ public class CrystalAura extends Module {
 			return false;
 
 		return mc.world.getOtherEntities(null, new Box(Vec3d.of(placePos), Vec3d.of(placePos.up(oldPlace ? 2 : 1)))).isEmpty();
+	}
+
+	// Same item-use-cooldown desync AirPlace exploits (see AirPlace.java) - the interact packet
+	// only sticks against a non-solid block during a narrow cooldown window, so this just keeps
+	// trying every tick until that window lines up. No confirmation the block actually landed;
+	// supportDelay is a flat wait, not a check.
+	private void placeSupportBlock(BlockPos pos) {
+		if (((AccessorMinecraftClient) mc).getItemUseCooldown() != 4) {
+			return;
+		}
+
+		int obsidianSlot = InventoryUtils.getSlot(true, i -> mc.player.getInventory().getStack(i).getItem() == Items.OBSIDIAN);
+		if (obsidianSlot == -1) {
+			return;
+		}
+
+		Hand hand = InventoryUtils.selectSlot(obsidianSlot);
+		mc.getNetworkHandler().sendPacket(new PlayerInteractBlockC2SPacket(hand, new BlockHitResult(Vec3d.ofCenter(pos), Direction.UP, pos, false), 0));
 	}
 }

@@ -30,9 +30,17 @@ public class FastUse extends Module {
 			Items.ENDER_EYE, Items.ENDER_PEARL, Items.SPLASH_POTION, Items.LINGERING_POTION);
 
 	public FastUse() {
+		this(new SettingMode("Mode", "Single", "Multi").withDesc("Whether to throw once per tick or multiple times."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicate below capture that local variable instead.
+	private FastUse(SettingMode mode) {
 		super("FastUse", KEY_UNBOUND, ModuleCategory.PLAYER, "Allows you to use items faster.",
-				new SettingMode("Mode", "Single", "Multi").withDesc("Whether to throw once per tick or multiple times."),
-				new SettingSlider("Multi", 1, 100, 20, 0).withDesc("How many items to use per tick if on multi mode."),
+				mode,
+				new SettingSlider("Multi", 1, 100, 20, 0).withDesc("How many items to use per tick if on multi mode.")
+						.visibleWhen(() -> mode.getMode() == 1),
 				new SettingToggle("Throwables Only", true).withDesc("Only uses throwables.").withChildren(
 						new SettingToggle("XP Only", false).withDesc("Only uses XP bottles.")));
 	}

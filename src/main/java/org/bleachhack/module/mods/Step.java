@@ -30,9 +30,17 @@ public class Step extends Module {
 	private Deque<Double> queue = new ArrayDeque<>();
 
 	public Step() {
+		this(new SettingMode("Mode", "Packet", "Vanilla", "Spider", "Jump").withDesc("Step mode."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicate below capture that local variable instead.
+	private Step(SettingMode mode) {
 		super("Step", KEY_UNBOUND, ModuleCategory.MOVEMENT, "Allows you to Run up blocks like stairs.",
-				new SettingMode("Mode", "Packet", "Vanilla", "Spider", "Jump").withDesc("Step mode."),
-				new SettingSlider("Height", 0.1, 20, 2, 1).withDesc("How high to be able to step (Vanilla only)."),
+				mode,
+				new SettingSlider("Height", 0.1, 20, 2, 1).withDesc("How high to be able to step (Vanilla only).")
+						.visibleWhen(() -> mode.getMode() == 1),
 				new SettingToggle("Cooldown", false).withDesc("Adds a cooldown between stepping to prevent rubberbanding.").withChildren(
 						new SettingSlider("Amount", 0.01, 1, 0.1, 2).withDesc("How long the cooldown is (in seconds).")));
 	}

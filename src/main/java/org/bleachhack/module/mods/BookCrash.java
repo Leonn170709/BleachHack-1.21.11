@@ -45,12 +45,21 @@ public class BookCrash extends Module {
 	private int delay = 0;
 
 	public BookCrash() {
+		this(new SettingMode("Mode", "Jessica", "Raion", "Sign").withDesc("What method to use."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicates below capture that local variable instead.
+	private BookCrash(SettingMode mode) {
 		super("BookCrash", KEY_UNBOUND, ModuleCategory.EXPLOITS, "Abuses book and quill/sign packets to remotely kick people.",
-				new SettingMode("Mode", "Jessica", "Raion", "Sign").withDesc("What method to use."),
+				mode,
 				new SettingSlider("Uses", 1, 20, 5, 0).withDesc("How many uses per tick."),
 				new SettingSlider("Delay", 0, 5, 0, 0).withDesc("How many ticks to wait between uses."),
-				new SettingMode("Fill", "Ascii", "0xFFFF", "Random", "Old").withDesc("How to fill the book."),
-				new SettingSlider("Pages", 1, 100, 50, 0).withDesc("How many pages to fill."),
+				new SettingMode("Fill", "Ascii", "0xFFFF", "Random", "Old").withDesc("How to fill the book.")
+						.visibleWhen(() -> mode.getMode() != 2),
+				new SettingSlider("Pages", 1, 100, 50, 0).withDesc("How many pages to fill.")
+						.visibleWhen(() -> mode.getMode() != 2),
 				new SettingToggle("Auto-Off", true).withDesc("Automatically turns the modules off when you disconnect."));
 	}
 

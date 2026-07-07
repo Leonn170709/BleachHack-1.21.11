@@ -38,16 +38,29 @@ public class HoleESP extends Module {
 	private Map<BlockPos, int[]> holes = new HashMap<>();
 
 	public HoleESP() {
+		this(new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."),
+				new SettingMode("Render", "GlowUp", "GlowDown", "Box+Fill", "Box", "Fill").withDesc("The rendering method."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the two Render mode
+	// settings as constructor parameters first lets the predicates below capture those local
+	// variables instead, even though they're nested inside RenderBottom's/RenderSides' children.
+	private HoleESP(SettingMode bottomRenderMode, SettingMode sideRenderMode) {
 		super("HoleESP", KEY_UNBOUND, ModuleCategory.RENDER, "Highlights safe and not so safe holes. Used for Crystalpvp.",
 				new SettingSlider("Radius", 1, 20, 10, 0).withDesc("Radius in which holes are getting searched."),
 				new SettingToggle("RenderBottom", true).withDesc("Render the bottom of holes.").withChildren(
-						new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."),
-						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines."),
-						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill.")),
+						bottomRenderMode,
+						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines.")
+								.visibleWhen(() -> bottomRenderMode.getMode() != 2),
+						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill.")
+								.visibleWhen(() -> bottomRenderMode.getMode() != 1)),
 				new SettingToggle("RenderSides", true).withDesc("Render the sides of holes.").withChildren(
-						new SettingMode("Render", "GlowUp", "GlowDown", "Box+Fill", "Box", "Fill").withDesc("The rendering method."),
-						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines."),
-						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill/glow"),
+						sideRenderMode,
+						new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines.")
+								.visibleWhen(() -> sideRenderMode.getMode() == 2 || sideRenderMode.getMode() == 3),
+						new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill/glow")
+								.visibleWhen(() -> sideRenderMode.getMode() != 3),
 						new SettingSlider("Height", 0.1, 8, 1, 1).withDesc("The height to render the sides.")),
 				new SettingToggle("Bedrock", true).withDesc("Shows holes with full bedrock.").withChildren(
 						new SettingColor("Color", 0, 255, 0).withDesc("Color for bedrock holes.")),

@@ -118,7 +118,12 @@ public abstract class ClickGuiScreen extends WindowScreen {
 						boxX = Math.max(0, tooltip.x - maxLineWidth - 9);
 					}
 
-					int tooltipY = tooltip.y;
+					// The tooltip is drawn growing upward from its anchor - a long description near
+					// the top of the screen would otherwise have its first lines pushed off the top
+					// edge and become unreadable. Shift the whole thing down just enough to keep its
+					// topmost line on screen instead.
+					int totalHeight = segments.stream().mapToInt(List::size).sum() * 10;
+					int tooltipY = Math.max(tooltip.y, totalHeight);
 					for (List<String> lines: segments) {
 						int start = tooltipY - lines.size() * 10;
 						for (int l = 0; l < lines.size(); l++) {

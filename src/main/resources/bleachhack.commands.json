@@ -10,6 +10,7 @@
 	"CmdEntityMenu",
 	"CmdEntityStats",
 	"CmdFriends",
+	"CmdModuleSettings",
 	"CmdGamemode",
 	"CmdGive",
 	"CmdHelp",

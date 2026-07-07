@@ -234,7 +234,7 @@ public class AutoSteal extends Module {
 		if (event.getPacket() instanceof InventoryS2CPacket) {
 			InventoryS2CPacket packet = (InventoryS2CPacket) event.getPacket();
 
-			if ((lastOpen - currentTime >= 2 || currentItems == null) && packet.contents().size() == 63 || packet.contents().size() == 90) {
+			if ((currentTime - lastOpen >= 2 || currentItems == null) && (packet.contents().size() == 63 || packet.contents().size() == 90)) {
 				currentItems = new ArrayList<>(packet.contents().subList(0, packet.contents().size() - 36));
 				//currentSyncId = -1;
 			}

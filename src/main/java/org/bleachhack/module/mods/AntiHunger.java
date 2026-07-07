@@ -29,11 +29,21 @@ public class AntiHunger extends Module {
 	private boolean ignorePacket = false;
 
 	public AntiHunger() {
+		this(new SettingMode("Mode", "Old", "New").withDesc("Old is the original 1.19.4 behavior, New is a Meteor-style implementation."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicates below capture that local variable instead.
+	private AntiHunger(SettingMode mode) {
 		super("AntiHunger", KEY_UNBOUND, ModuleCategory.PLAYER, "Minimizes the amount of hunger you use (Also makes you slide).",
-				new SettingMode("Implementation", "Legacy", "Meteor").withDesc("Which anti hunger algorithm to use."),
-				new SettingToggle("Relaxed", false).withDesc("Legacy only: only activates every other tick, might fix getting fly kicked."),
-				new SettingToggle("Sprint Spoof", true).withDesc("Meteor only: cancels sprint start packets."),
-				new SettingToggle("OnGround Spoof", true).withDesc("Meteor only: spoofs the onGround flag while standing still on the ground."));
+				mode,
+				new SettingToggle("Relaxed", false).withDesc("Only activates every other tick, might fix getting fly kicked.")
+						.visibleWhen(() -> mode.getMode() == 0),
+				new SettingToggle("Sprint Spoof", true).withDesc("Cancels sprint start packets.")
+						.visibleWhen(() -> mode.getMode() == 1),
+				new SettingToggle("OnGround Spoof", true).withDesc("Spoofs the onGround flag while standing still on the ground.")
+						.visibleWhen(() -> mode.getMode() == 1));
 	}
 
 	@Override

@@ -30,10 +30,19 @@ public class Ambience extends Module {
 	private final WeatherManager weatherManager = new WeatherManager();
 
 	public Ambience() {
+		this(new SettingMode("Weather", "Clear", "Rain").withDesc("What weather to use."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Weather mode
+	// setting as a constructor parameter first lets the predicate below capture that local
+	// variable instead, even though it's nested inside Weather's children.
+	private Ambience(SettingMode weatherMode) {
 		super("Ambience", KEY_UNBOUND, ModuleCategory.WORLD, "Changes the world ambience.",
 				new SettingToggle("Weather", true).withDesc("Changes the world weather.").withChildren(
-						new SettingMode("Weather", "Clear", "Rain").withDesc("What weather to use."),
-						new SettingSlider("Rain", 0, 2, 0, 2).withDesc("How much it should rain in rain mode.")),
+						weatherMode,
+						new SettingSlider("Rain", 0, 2, 0, 2).withDesc("How much it should rain in rain mode.")
+								.visibleWhen(() -> weatherMode.getMode() == 1)),
 				new SettingToggle("Time", false).withDesc("Changes the world time.").withChildren(
 						new SettingSlider("Time", 0, 24000, 12500, 0).withDesc("What time to set the world to.")),
 				new SettingToggle("Overworld", true).withDesc("Changes the overworld ambience-").withChildren(

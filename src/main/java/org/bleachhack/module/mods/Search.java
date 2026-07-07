@@ -113,10 +113,20 @@ public class Search extends Module {
 	private int oldViewDistance = -1;
 
 	public Search() {
+		this(new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Render mode
+	// setting as a constructor parameter first lets the predicates below capture that local
+	// variable instead.
+	private Search(SettingMode renderMode) {
 		super("Search", KEY_UNBOUND, ModuleCategory.RENDER, "Highlights certain blocks.",
-				new SettingMode("Render", "Box+Fill", "Box", "Fill").withDesc("The rendering method."),
-				new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines."),
-				new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill."),
+				renderMode,
+				new SettingSlider("Box", 0.1, 4, 2, 1).withDesc("The thickness of the box lines.")
+						.visibleWhen(() -> renderMode.getMode() != 2),
+				new SettingSlider("Fill", 0, 1, 0.3, 2).withDesc("The opacity of the fill.")
+						.visibleWhen(() -> renderMode.getMode() != 1),
 				new SettingToggle("Tracers", false).withDesc("Renders a line from the player to all found blocks.").withChildren(
 						new SettingSlider("Width", 0.1, 5, 1.5, 1).withDesc("Thickness of the tracers."),
 						new SettingSlider("Opacity", 0, 1, 0.75, 2).withDesc("Opacity of the tracers.")),

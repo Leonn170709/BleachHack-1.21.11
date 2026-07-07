@@ -25,12 +25,23 @@ public class Speed extends Module {
 	private boolean jumping;
 
 	public Speed() {
+		this(new SettingMode("Mode", "StrafeHop", "Strafe", "OnGround", "MiniHop", "Bhop").withDesc("Speed mode."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicates below capture that local variable instead.
+	private Speed(SettingMode mode) {
 		super("Speed", KEY_UNBOUND, ModuleCategory.MOVEMENT, "Allows you to go faster, what did you expect?",
-				new SettingMode("Mode", "StrafeHop", "Strafe", "OnGround", "MiniHop", "Bhop").withDesc("Speed mode."),
-				new SettingSlider("Strafe", 0.15, 0.55, 0.27, 2).withDesc("Strafe speed."),
-				new SettingSlider("OnGround", 0.1, 10, 2, 1).withDesc("OnGround speed."),
-				new SettingSlider("MiniHop", 0.1, 10, 2, 1).withDesc("MiniHop speed."),
-				new SettingSlider("Bhop", 0.1, 10, 2, 1).withDesc("Bhop speed."),
+				mode,
+				new SettingSlider("Strafe", 0.15, 0.55, 0.27, 2).withDesc("Strafe speed.")
+						.visibleWhen(() -> mode.getMode() <= 1),
+				new SettingSlider("OnGround", 0.1, 10, 2, 1).withDesc("OnGround speed.")
+						.visibleWhen(() -> mode.getMode() == 2),
+				new SettingSlider("MiniHop", 0.1, 10, 2, 1).withDesc("MiniHop speed.")
+						.visibleWhen(() -> mode.getMode() == 3),
+				new SettingSlider("Bhop", 0.1, 10, 2, 1).withDesc("Bhop speed.")
+						.visibleWhen(() -> mode.getMode() == 4),
 				new SettingToggle("NoInertia", false).withDesc("Prevents you from moving forcefully."));
 	}
 

@@ -24,7 +24,8 @@ public class ClickGui extends Module {
 				new SettingSlider("Length", 70, 85, 75, 0).withDesc("The length of each window."),
 				new SettingToggle("Search bar", true).withDesc("Shows a search bar."),
 				new SettingToggle("Help", true).withDesc("Shows the help text."),
-				new SettingSlider("Scale", 50, 200, 100, 0).withDesc("Scales the whole clickgui, in percent."));
+				new SettingSlider("Scale", 50, 200, 100, 0).withDesc("Scales the whole clickgui on top of Auto Fit, in percent."),
+				new SettingToggle("Auto Fit", true).withDesc("Keeps the clickgui the same real size regardless of your Minecraft GUI Scale. Scale still applies on top of this."));
 	}
 
 	@Override

@@ -31,12 +31,23 @@ import net.minecraft.util.math.Vec3d;
 public class ElytraFly extends Module {
 
 	public ElytraFly() {
+		this(new SettingMode("Mode", "AutoBoost", "Boost", "Control", "BruhFly", "Pak\u00e8tFly").withDesc("Elytrafly mode."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Mode setting as
+	// a constructor parameter first lets the predicates below capture that local variable instead.
+	private ElytraFly(SettingMode mode) {
 		super("ElytraFly", KEY_UNBOUND, ModuleCategory.MOVEMENT, "Improves the elytra.",
-				new SettingMode("Mode", "AutoBoost", "Boost", "Control", "BruhFly", "Pak\u00e8tFly").withDesc("Elytrafly mode."),
-				new SettingSlider("Boost", 0, 0.15, 0.05, 2).withDesc("Boost speed."),
-				new SettingSlider("MaxBoost", 0, 5, 2.5, 1).withDesc("Max boost speed."),
-				new SettingSlider("Speed", 0, 5, 0.8, 2).withDesc("Speed for all the other modes."),
-				new SettingSlider("Packets", 1, 10, 2, 0).withDesc("How many packets to send in packet mode."));
+				mode,
+				new SettingSlider("Boost", 0, 0.15, 0.05, 2).withDesc("Boost speed.")
+						.visibleWhen(() -> mode.getMode() <= 1),
+				new SettingSlider("MaxBoost", 0, 5, 2.5, 1).withDesc("Max boost speed.")
+						.visibleWhen(() -> mode.getMode() <= 1),
+				new SettingSlider("Speed", 0, 5, 0.8, 2).withDesc("Speed for all the other modes.")
+						.visibleWhen(() -> mode.getMode() >= 2),
+				new SettingSlider("Packets", 1, 10, 2, 0).withDesc("How many packets to send in packet mode.")
+						.visibleWhen(() -> mode.getMode() == 4));
 	}
 
 	@BleachSubscribe

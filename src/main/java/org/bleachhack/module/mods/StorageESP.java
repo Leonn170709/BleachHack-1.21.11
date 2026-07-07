@@ -40,11 +40,22 @@ import java.util.Set;
 public class StorageESP extends Module {
 
 	public StorageESP() {
+		this(new SettingMode("Render", "Shader", "Box").withDesc("The Render mode."));
+	}
+
+	// A visibleWhen(...) predicate can't call an instance method like getSetting(0) - "this" isn't
+	// allowed yet in a super(...) argument list, even inside a lambda. Building the Render mode
+	// setting as a constructor parameter first lets the predicates below capture that local
+	// variable instead.
+	private StorageESP(SettingMode renderMode) {
 		super("StorageESP", KEY_UNBOUND, ModuleCategory.RENDER, "Highlights storage containers in the world.",
-				new SettingMode("Render", "Shader", "Box").withDesc("The Render mode."),
-				new SettingSlider("ShaderFill", 1, 255, 50, 0).withDesc("How opaque the fill on shader mode should be."),
-				new SettingSlider("Box", 0, 5, 2, 1).withDesc("How thick the box outline should be."),
-				new SettingSlider("BoxFill", 0, 255, 50, 0).withDesc("How opaque the fill on box mode should be."),
+				renderMode,
+				new SettingSlider("ShaderFill", 1, 255, 50, 0).withDesc("How opaque the fill on shader mode should be.")
+						.visibleWhen(() -> renderMode.getMode() == 0),
+				new SettingSlider("Box", 0, 5, 2, 1).withDesc("How thick the box outline should be.")
+						.visibleWhen(() -> renderMode.getMode() == 1),
+				new SettingSlider("BoxFill", 0, 255, 50, 0).withDesc("How opaque the fill on box mode should be.")
+						.visibleWhen(() -> renderMode.getMode() == 1),
 
 				new SettingToggle("Chests", true).withDesc("Highlights chests/barrels."),
 				new SettingToggle("Enderchests", true).withDesc("Highlights enderchests."),

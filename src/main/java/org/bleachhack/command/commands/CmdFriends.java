@@ -22,8 +22,6 @@ import org.bleachhack.command.exception.CmdSyntaxException;
 import org.bleachhack.util.BleachLogger;
 import org.bleachhack.util.io.BleachFileHelper;
 
-import java.util.Locale;
-
 public class CmdFriends extends Command {
 
 	public CmdFriends() {
@@ -49,7 +47,7 @@ public class CmdFriends extends Command {
 				throw new CmdSyntaxException("No username selected");
 			}
 
-			BleachHack.friendMang.remove(args[1].toLowerCase(Locale.ENGLISH));
+			BleachHack.friendMang.remove(args[1]);
 			BleachLogger.info("Removed \"" + args[1] + "\" from the friend list");
 		} else if (args[0].equalsIgnoreCase("list")) {
 			if (BleachHack.friendMang.getFriends().isEmpty()) {
