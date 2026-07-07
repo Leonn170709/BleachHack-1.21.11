@@ -33,7 +33,7 @@ public class Xray extends Module {
 	private double gamma;
 
 	public Xray() {
-		super("Xray", KEY_UNBOUND, ModuleCategory.RENDER, "Baritone is for zoomers.",
+		super("Xray", KEY_UNBOUND, ModuleCategory.RENDER, "Makes chosen blocks (ores by default) visible through terrain.",
 				new SettingToggle("Fluids", false).withDesc("Show fluids."),
 				new SettingToggle("Opacity", true).withDesc("Toggles an adjustable alpha level for non-xray blocks.").withChildren(
 						new SettingSlider("Value", 0, 255, 64, 0).withDesc("Block alpha value."),

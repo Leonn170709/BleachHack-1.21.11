@@ -18,7 +18,7 @@ public class Zoom extends Module {
 	public double prevSens;
 
 	public Zoom() {
-		super("Zoom", KEY_UNBOUND, ModuleCategory.RENDER, "ok zoomer.",
+		super("Zoom", KEY_UNBOUND, ModuleCategory.RENDER, "Zooms in your view.",
 				new SettingSlider("Scale", 1, 10, 3, 2).withDesc("How much to zoom."));
 	}
 

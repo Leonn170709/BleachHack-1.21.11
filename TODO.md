@@ -13,7 +13,7 @@
 - [x] Take the Criticals modes from Meteor and implement them into BleachHack's Criticals module.
 - [x] Make ClickGUI categories scrollable.
 - [x] Make the ClickGUI scale configurable in the ClickGUI module.
-- [ ] Rework all module descriptions so they are always readable.
+- [x] Rework all module descriptions so they are always readable.
 - [x] Add a Friends menu.
 - [x] Add No Ground mode to NoFall (if it's not already implemented).
 - [ ] Optimize the client, especially rendering performance.

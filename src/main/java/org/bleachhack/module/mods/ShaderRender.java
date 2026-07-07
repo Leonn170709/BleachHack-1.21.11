@@ -35,7 +35,7 @@ public class ShaderRender extends Module {
 	private PostEffectProcessor lastShader = null;
 
 	public ShaderRender() {
-		super("ShaderRender", KEY_UNBOUND, ModuleCategory.RENDER, "1.7 Super secret settings.",
+		super("ShaderRender", KEY_UNBOUND, ModuleCategory.RENDER, "Applies a full-screen shader effect to the game (Minecraft's old vanilla shader packs).",
 				new SettingMode("Shader", "Notch", "FXAA", "Art", "Bumpy", "Blobs", "Blobs2", "Pencil", "Vibrant",
 						"Deconverge", "Flip", "Invert", "NTSC", "Outline", "Phosphor", "Scanline", "Sobel",
 						"Bits", "Desaturate", "Green", "Blur", "Wobble", "Antialias", "Creeper", "Spider").withDesc("Shader to use."));
