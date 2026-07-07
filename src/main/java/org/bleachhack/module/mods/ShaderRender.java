@@ -24,16 +24,25 @@ import net.minecraft.util.Identifier;
 public class ShaderRender extends Module {
 
 	// 1.21.11 removed most of the old "Super Secret Settings" post-effect shaders from the vanilla
-	// jar - Invert/Blur/Creeper/Spider are the only 4 of the original 24 modes that still ship as
-	// real assets/minecraft/post_effect/json files. The rest have been ported from Minecraft
-	// 1.19.4's own (Mojang) GLSL/JSON assets against the new post-effect pipeline - see
+	// jar - Invert/Creeper/Spider are the only 3 of the original 24 modes that still ship as real
+	// assets/minecraft/post_effect/json files. The rest have been ported from Minecraft 1.19.4's
+	// own (Mojang) GLSL/JSON assets against the new post-effect pipeline - see
 	// src/main/resources/assets/bleachhack/{post_effect,shaders/post}. Art/Flip/NTSC/Outline/
 	// Phosphor are still missing (multi-pass chains with frame-feedback targets or a custom vertex
-	// shader - not ported yet); picking one of those just leaves the world unshaded instead of
-	// crashing. Settings stay identical to 1.19.4 so saved configs don't break.
-	private static final Set<String> VANILLA_STILL_AVAILABLE = Set.of("invert", "blur", "creeper", "spider");
+	// shader - not ported yet). Wobble crashed the client with "Buffer already closed" during a
+	// later, unrelated renderBlur() call and was pulled without a confirmed root cause - possibly
+	// the same issue as Blur below, possibly something else; not re-added without being able to
+	// verify it.
+	//
+	// Blur is its own bleachhack:blur post_effect (reusing vanilla's box_blur.fsh) instead of
+	// vanilla's minecraft:blur - GameRenderer.renderBlur() (menu/inventory background blur) loads
+	// that exact ID too, and ShaderLoader caches processors by ID, so this mixin's per-frame
+	// render() call and vanilla's own renderBlur() call were driving the *same* PostEffectProcessor
+	// instance through two different render() overloads. That's what was actually crashing, not
+	// blur's own shader logic.
+	private static final Set<String> VANILLA_STILL_AVAILABLE = Set.of("invert", "creeper", "spider");
 	private static final Set<String> PORTED = Set.of("notch", "fxaa", "bumpy", "blobs", "blobs2", "pencil", "vibrant",
-			"deconverge", "scanline", "sobel", "bits", "desaturate", "green", "wobble", "antialias");
+			"deconverge", "scanline", "sobel", "bits", "desaturate", "green", "antialias", "blur");
 
 	private String lastMode = null;
 	private PostEffectProcessor lastShader = null;

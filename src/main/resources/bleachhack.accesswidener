@@ -154,6 +154,15 @@ accessible    field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS
 mutable       field    net/minecraft/network/packet/s2c/play/PlayerPositionLookS2CPacket    change    Lnet/minecraft/entity/EntityPosition;
 
 
+# PalettedContainer
+# - For NewChunks' New mode to scan a chunk section's block-state palette by insertion order
+#   (the "PaletteExploit" new/being-updated-chunk detection from Trouser-Streak) - no public API
+#   exposes the palette itself, only aggregate queries like hasAny()/count().
+accessible    field    net/minecraft/world/chunk/PalettedContainer    data    Lnet/minecraft/world/chunk/PalettedContainer$Data;
+accessible    class    net/minecraft/world/chunk/PalettedContainer$Data
+accessible    method   net/minecraft/world/chunk/PalettedContainer$Data    palette    ()Lnet/minecraft/world/chunk/Palette;
+
+
 # VehicleMoveC2SPacket
 # - For EntityControl to change the pitch and yaw of the vehicle
 accessible    field    net/minecraft/network/packet/c2s/play/VehicleMoveC2SPacket    yaw    F
