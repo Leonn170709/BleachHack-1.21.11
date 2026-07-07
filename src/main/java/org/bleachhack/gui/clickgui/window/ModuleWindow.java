@@ -36,6 +36,9 @@ public class ModuleWindow extends ClickGuiWindow {
 
 	private Tooltip tooltip = null;
 
+	// how far the module list is scrolled down, in pixels; clamped to [0, content height - visible height]
+	private int scrollOffset = 0;
+
 	public ModuleWindow(List<Module> mods, int x1, int y1, int len, String title, ItemStack icon) {
 		super(x1, y1, x1 + len, 0, title, icon);
 
@@ -53,7 +56,17 @@ public class ModuleWindow extends ClickGuiWindow {
 		int x = x1 + 1;
 		int y = y1 + 13;
 		x2 = x + len + 1;
-		y2 = hiding ? y1 + 13 : y1 + 13 + getHeight();
+
+		int contentHeight = getHeight();
+		// leave a small margin so the window never quite touches the bottom of the screen
+		int visibleHeight = hiding ? 0 : Math.min(contentHeight, Math.max(12, mc.getWindow().getScaledHeight() - y - 4));
+		y2 = hiding ? y1 + 13 : y1 + 13 + visibleHeight;
+
+		boolean scrollable = !hiding && contentHeight > visibleHeight;
+		if (scrollable && mwScroll != 0 && mouseOver(x1, y1, x2, y2)) {
+			scrollOffset -= mwScroll * 12;
+		}
+		scrollOffset = Math.max(0, Math.min(scrollOffset, Math.max(0, contentHeight - visibleHeight)));
 
 		super.render(matrices, mouseX, mouseY);
 
@@ -61,30 +74,36 @@ public class ModuleWindow extends ClickGuiWindow {
 
 		TextRenderer textRend = mc.textRenderer;
 
-		int curY = 0;
+		if (scrollable) {
+			matrices.enableScissor(x, y, x + len, y + visibleHeight);
+		}
+
+		int curY = -scrollOffset;
 		for (Entry<Module, Boolean> m : mods.entrySet()) {
-			if (mouseOver(x, y + curY, x + len, y + 12 + curY)) {
-				matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x70303070);
-			}
+			if (curY + 12 > 0 && curY < visibleHeight) {
+				if (mouseOver(x, y + curY, x + len, y + 12 + curY)) {
+					matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x70303070);
+				}
 
-			// If they match: Module gets marked red
-			if (searchedModules != null && searchedModules.contains(m.getKey()) && ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle().getState()) {
-				matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x50ff0000);
-			}
+				// If they match: Module gets marked red
+				if (searchedModules != null && searchedModules.contains(m.getKey()) && ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle().getState()) {
+					matrices.fill(x, y + curY, x + len, y + 12 + curY, 0x50ff0000);
+				}
 
-			matrices.drawTextWithShadow(textRend, textRend.trimToWidth(m.getKey().getName(), len),
-					x + 2, y + 2 + curY, m.getKey().isEnabled() ? 0x70efe0 : 0xc0c0c0);
+				matrices.drawTextWithShadow(textRend, textRend.trimToWidth(m.getKey().getName(), len),
+						x + 2, y + 2 + curY, m.getKey().isEnabled() ? 0x70efe0 : 0xc0c0c0);
 
-			// Set which module settings show on
-			if (mouseOver(x, y + curY, x + len, y + 12 + curY)) {
-				tooltip = new Tooltip(x + len + 2, y + curY, m.getKey().getDesc());
+				// Set which module settings show on
+				if (mouseOver(x, y + curY, x + len, y + 12 + curY)) {
+					tooltip = new Tooltip(x + len + 2, y + curY, m.getKey().getDesc());
 
-				if (lmDown)
-					m.getKey().toggle();
-				if (rmDown)
-					mods.replace(m.getKey(), !m.getValue());
-				if (lmDown || rmDown)
-					mc.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+					if (lmDown)
+						m.getKey().toggle();
+					if (rmDown)
+						mods.replace(m.getKey(), !m.getValue());
+					if (lmDown || rmDown)
+						mc.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+				}
 			}
 
 			curY += 12;
@@ -96,17 +115,25 @@ public class ModuleWindow extends ClickGuiWindow {
 						continue;
 					}
 
-					s.render(this, matrices, x + 1, y + curY, len - 1);
+					int settingHeight = s.getHeight(len);
 
-					if (!s.getTooltip().isEmpty() && mouseOver(x + 2, y + curY, x + len, y + s.getHeight(len) + curY)) {
-						tooltip = s.getTooltip(this, x + 1, y + curY, len - 1);
+					if (curY + settingHeight > 0 && curY < visibleHeight) {
+						s.render(this, matrices, x + 1, y + curY, len - 1);
+
+						if (!s.getTooltip().isEmpty() && mouseOver(x + 2, y + curY, x + len, y + settingHeight + curY)) {
+							tooltip = s.getTooltip(this, x + 1, y + curY, len - 1);
+						}
+
+						matrices.fill(x + 1, y + curY, x + 2, y + curY + settingHeight, 0xff8070b0);
 					}
 
-					matrices.fill(x + 1, y + curY, x + 2, y + curY + s.getHeight(len), 0xff8070b0);
-
-					curY += s.getHeight(len);
+					curY += settingHeight;
 				}
 			}
+		}
+
+		if (scrollable) {
+			matrices.disableScissor();
 		}
 	}
 
