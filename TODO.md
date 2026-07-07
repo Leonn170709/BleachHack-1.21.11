@@ -10,7 +10,7 @@
     - [ ] Add an **Auto Calculate Packets** setting that automatically scales the spam packet count based on the clip distance.
   - [ ] Projectile Launcher
     - [ ] Add an **Auto Calculate Packets** setting that automatically scales the spam packet count based on the clip distance.
-- [ ] Take the Criticals modes from Meteor and implement them into BleachHack's Criticals module.
+- [x] Take the Criticals modes from Meteor and implement them into BleachHack's Criticals module.
 - [ ] Make ClickGUI categories scrollable.
 - [ ] Make the ClickGUI scale configurable in the ClickGUI module.
 - [ ] Rework all module descriptions so they are always readable.

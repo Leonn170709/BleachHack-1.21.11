@@ -30,7 +30,9 @@ public class Criticals extends Module {
 
 	public Criticals() {
 		super("Criticals", KEY_UNBOUND, ModuleCategory.COMBAT, "Attempts to force Critical hits on entities you hit.",
-				new SettingMode("Mode", "MiniJump", "FullJump").withDesc("Criticals mode, MiniJump does the smallest posible jump, FullJump simulates a full jump."));
+				new SettingMode("Mode", "MiniJump", "FullJump", "Packet", "UpdatedNCP", "OldNCP").withDesc(
+						"Criticals mode. MiniJump/FullJump fake a (mini/full) jump, Packet/UpdatedNCP/OldNCP (from Meteor) "
+						+ "spoof a tiny, near-invisible height change tuned to different anticheat detection thresholds."));
 	}
 
 	@BleachSubscribe
@@ -60,15 +62,31 @@ public class Criticals extends Module {
 			double x = mc.player.getX();
 			double y = mc.player.getY();
 			double z = mc.player.getZ();
-			if (getSetting(0).asMode().getMode() == 0) {
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0633, z, false, mc.player.horizontalCollision));
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, mc.player.horizontalCollision));
-			} else {
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.42, z, false, mc.player.horizontalCollision));
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.65, z, false, mc.player.horizontalCollision));
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.72, z, false, mc.player.horizontalCollision));
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.53, z, false, mc.player.horizontalCollision));
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.32, z, false, mc.player.horizontalCollision));
+			switch (getSetting(0).asMode().getMode()) {
+				case 0 -> {
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0633, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, mc.player.horizontalCollision));
+				}
+				case 1 -> {
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.42, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.65, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.72, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.53, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.32, z, false, mc.player.horizontalCollision));
+				}
+				case 2 -> {
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0625, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, mc.player.horizontalCollision));
+				}
+				case 3 -> {
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0000008, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y, z, false, mc.player.horizontalCollision));
+				}
+				case 4 -> {
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.11, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.1100013579, z, false, mc.player.horizontalCollision));
+					mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(x, y + 0.0000013579, z, false, mc.player.horizontalCollision));
+				}
 			}
 		}
 
