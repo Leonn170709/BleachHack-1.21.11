@@ -14,6 +14,7 @@ import org.bleachhack.gui.AccountManagerScreen;
 import org.bleachhack.gui.BleachCreditsScreen;
 import org.bleachhack.gui.BleachOptionsScreen;
 import org.bleachhack.gui.BleachTitleScreen;
+import org.bleachhack.gui.FriendManagerScreen;
 import org.bleachhack.gui.UpdateScreen;
 import org.bleachhack.gui.clickgui.ModuleClickGuiScreen;
 import org.bleachhack.gui.window.WindowManagerScreen;
@@ -69,6 +70,7 @@ public class MixinTitleScreen extends Screen {
 							Triple.of(new AccountManagerScreen(), "Accounts", new ItemStack(Items.PAPER)),
 							Triple.of(ModuleClickGuiScreen.INSTANCE, "ClickGui", new ItemStack(Items.TOTEM_OF_UNDYING)),
 							Triple.of(new BleachOptionsScreen(null), "Options", new ItemStack(Items.REDSTONE)),
+							Triple.of(new FriendManagerScreen(), "Friends", new ItemStack(Items.PLAYER_HEAD)),
 							Triple.of(new BleachCreditsScreen(), "Credits", new ItemStack(Items.DRAGON_HEAD))) {
 
 						public boolean keyPressed(KeyInput input) {
