@@ -51,12 +51,24 @@ public class PacketFly extends Module {
 
 	@BleachSubscribe
 	public void onMovementPackets(EventSendMovementPackets event) {
+		// Packet mode moves via real velocity/collision (see onTick) and relies on Minecraft's own
+		// sendMovementPackets to report the resulting position, so it must not be cancelled here.
+		if (getSetting(0).asMode().getMode() == 1) {
+			return;
+		}
+
 		mc.player.setVelocity(Vec3d.ZERO);
 		event.setCancelled(true);
 	}
 
 	@BleachSubscribe
 	public void onClientMove(EventClientMove event) {
+		// Packet mode needs real, collision-resolved movement to actually go anywhere - only Phase
+		// mode (which repositions the entity directly every tick) needs vanilla movement suppressed.
+		if (getSetting(0).asMode().getMode() == 1) {
+			return;
+		}
+
 		event.setCancelled(true);
 	}
 
@@ -77,6 +89,13 @@ public class PacketFly extends Module {
 
 	@BleachSubscribe
 	public void onSendPacket(EventPacket.Send event) {
+		// Only Phase mode hand-crafts its own position packets every tick and wants the automatic
+		// ones suppressed/simplified; Packet mode needs the normal Full packets (with real look data)
+		// to go out untouched.
+		if (getSetting(0).asMode().getMode() != 0) {
+			return;
+		}
+
 		if (event.getPacket() instanceof PlayerMoveC2SPacket.LookAndOnGround) {
 			event.setCancelled(true);
 			return;
@@ -140,28 +159,18 @@ public class PacketFly extends Module {
 				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(cachedPos.x, cachedPos.y - 0.01, cachedPos.z, true, false));
 			}
 		} else if (getSetting(0).asMode().getMode() == 1) {
-			//moveVec = Vec3d.ZERO;
-			/*if (mc.player.headYaw != mc.player.yaw) {
-				mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.LookOnly(
-						mc.player.headYaw, mc.player.pitch, mc.player.isOnGround()));
-				return;
-			}*/
-
-			/*if (mc.options.jumpKey.isPressed())
-				mouseY = 0.062;
-			if (mc.options.sneakKey.isPressed())
-				mouseY = -0.062;*/
-
+			// Packet mode: rather than hand-crafting position packets from an origin that never
+			// advances (the old code recomputed moveVec from the player's real, unmoved position
+			// every tick, so it never actually went anywhere), drive real velocity/collision like
+			// Flight's Static mode does and let Minecraft's normal movement-packet code report the
+			// resulting position - this also means it respects collision (no wall clipping) and
+			// looks like ordinary movement to the server, unlike Phase's raw teleport packets.
 			if (timer > getSetting(3).asSlider().getValue()) {
-				moveVec = new Vec3d(0, -vspeed, 0);
+				moveVec = moveVec.add(0, -vspeed, 0);
 				timer = 0;
 			}
 
-			mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-					mc.player.getX() + moveVec.x, mc.player.getY() + moveVec.y, mc.player.getZ() + moveVec.z, false, false));
-
-			mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(
-					mc.player.getX() + moveVec.x, mc.player.getY() - 420.69, mc.player.getZ() + moveVec.z, true, false));
+			mc.player.setVelocity(moveVec);
 		}
 	}
 

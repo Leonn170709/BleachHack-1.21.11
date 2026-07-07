@@ -133,13 +133,30 @@ public class Ambience extends Module {
 	// getCloudsColor/getDimensionEffects/getFogColorOverride) with a generic, position/biome-weighted
 	// EnvironmentAttributes system (World.getEnvironmentAttributes().getAttributeValue(...)). The old
 	// ClientWorld/DimensionEffects mixins that fired these hooks had to be removed since their target
-	// methods no longer exist. The "Sky Color"/"End Skybox" settings above are kept (so saved configs
-	// don't break) but currently don't change anything - overriding EnvironmentAttributes.SKY_COLOR_
-	// VISUAL/FOG_COLOR_VISUAL for the current dimension would need a mixin into
-	// WorldEnvironmentAttributeAccess.getAttributeValue(...) instead - not yet done.
+	// methods no longer exist. Sky color is now overridden directly at render time instead, from
+	// MixinSkyRendering (see getSkyColorOverride()) rather than through the attribute system itself -
+	// SkyRendering.updateRenderState() is the single place that reads SKY_COLOR_VISUAL into the
+	// render state, so overwriting it there after the fact is simpler than modeling our override as
+	// another EnvironmentAttributeFunction. "End Skybox" is a separate, still-unimplemented toggle
+	// (End dimension rendering doesn't use skyColor at all - see DimensionType.Skybox.END - so this
+	// would need a different hook if ever implemented).
 
 	private SettingToggle getCurrentDimSetting() {
 		return getSetting(mc.world.getRegistryKey() == World.END ? 4 : mc.world.getRegistryKey() == World.NETHER ? 3 : 2).asToggle();
+	}
+
+	// Used by MixinSkyRendering; null means "don't override".
+	public Integer getSkyColorOverride() {
+		if (mc.world == null) {
+			return null;
+		}
+
+		SettingToggle skyColor = getCurrentDimSetting().getChild(0).asToggle();
+		if (!getCurrentDimSetting().getState() || !skyColor.getState()) {
+			return null;
+		}
+
+		return skyColor.getChild(1).asColor().getRGB();
 	}
 
 	private static class WeatherManager {
@@ -172,7 +189,7 @@ public class Ambience extends Module {
 		}
 
 		public boolean isActive() {
-			return rain >= 0f || thunder >= 1f;
+			return rain >= 0f || thunder >= 0f;
 		}
 	}
 }

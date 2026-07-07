@@ -50,6 +50,7 @@
     "MixinRenderTickCounter",
     "MixinScreen",
     "MixinServerScreen",
+    "MixinSkyRendering",
     "MixinSoundSystem",
     "MixinStringHelper",
     "MixinTitleScreen",
