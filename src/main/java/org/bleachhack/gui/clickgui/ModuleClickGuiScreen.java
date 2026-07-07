@@ -57,11 +57,25 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 
 	public void initWindows() {
 		int len = ModuleManager.getModule(ClickGui.class).getSetting(0).asSlider().getValueInt();
-		
-		int y = 50;
+
+		// Wrap into a new column instead of running the category tabs off the bottom of the
+		// screen - windows are user-draggable and their positions get saved, so a scroll offset
+		// that keeps repositioning them every frame would fight (and undo) that.
+		int screenHeight = (int) (client.getWindow().getScaledHeight() / Math.max(getScale(), 0.01f));
+		int maxRows = Math.max(1, (screenHeight - 50) / 16);
+
+		int col = 0;
+		int row = 0;
 		for (ModuleCategory c: ModuleCategory.values()) {
-			addWindow(new ModuleWindow(ModuleManager.getModulesInCat(c), 30, y, len, StringUtils.capitalize(c.name().toLowerCase()), c.getItem()));
-			y += 16;
+			int x = 30 + col * (len + 10);
+			int y = 50 + row * 16;
+			addWindow(new ModuleWindow(ModuleManager.getModulesInCat(c), x, y, len, StringUtils.capitalize(c.name().toLowerCase()), c.getItem()));
+
+			row++;
+			if (row >= maxRows) {
+				row = 0;
+				col++;
+			}
 		}
 
 		for (Window w: getWindows()) {
