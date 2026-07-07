@@ -46,7 +46,7 @@ public class Flight extends Module {
 
 		if (mc.player.age % 20 == 0 && getSetting(2).asMode().getMode() == 3 && !(getSetting(0).asMode().getMode() == 1)) {
 			mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() - 0.069, mc.player.getZ(), false, mc.player.horizontalCollision));
-			mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getZ() + 0.069, mc.player.getZ(), true, mc.player.horizontalCollision));
+			mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.PositionAndOnGround(mc.player.getX(), mc.player.getY() + 0.069, mc.player.getZ(), true, mc.player.horizontalCollision));
 		}
 
 		if (getSetting(0).asMode().getMode() == 0) {
@@ -99,6 +99,10 @@ public class Flight extends Module {
 				}
 			}
 		}
+
+		// Keep the client's fall distance at zero the whole time you're flying, in every mode -
+		// otherwise descending (even slowly) racks up fall damage the moment you touch down.
+		mc.player.fallDistance = 0;
 	}
 
 	@BleachSubscribe
