@@ -1,0 +1,45 @@
+#version 330
+
+// Ported from Minecraft 1.19.4's shaders/program/bumpy.fsh (Mojang) - same effect, updated to
+// 1.21.11's uniform-block/InSampler conventions since the old sampler/uniform names no longer exist.
+
+uniform sampler2D InSampler;
+
+layout(std140) uniform SamplerInfo {
+    vec2 OutSize;
+    vec2 InSize;
+};
+
+in vec2 texCoord;
+
+out vec4 fragColor;
+
+void main() {
+    vec2 oneTexel = 1.0 / InSize;
+
+    vec4 c = texture(InSampler, texCoord);
+    vec4 u = texture(InSampler, texCoord + vec2(        0.0, -oneTexel.y));
+    vec4 d = texture(InSampler, texCoord + vec2(        0.0,  oneTexel.y));
+    vec4 l = texture(InSampler, texCoord + vec2(-oneTexel.x,         0.0));
+    vec4 r = texture(InSampler, texCoord + vec2( oneTexel.x,         0.0));
+
+    vec4 nc = normalize(c);
+    vec4 nu = normalize(u);
+    vec4 nd = normalize(d);
+    vec4 nl = normalize(l);
+    vec4 nr = normalize(r);
+
+    float du = dot(nc, nu);
+    float dd = dot(nc, nd);
+    float dl = dot(nc, nl);
+    float dr = dot(nc, nr);
+
+    float i = 64.0;
+
+    float f = 1.0;
+    f += (du * i) - (dd * i);
+    f += (dr * i) - (dl * i);
+
+    vec4 color = c * clamp(f, 0.5, 2.0);
+    fragColor = vec4(color.rgb, 1.0);
+}

@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import net.minecraft.client.gl.PostEffectProcessor;
+import net.minecraft.client.render.DefaultFramebufferSet;
 import org.bleachhack.event.events.EventRenderShader;
 import org.bleachhack.eventbus.BleachSubscribe;
 import org.bleachhack.module.Module;
@@ -23,13 +24,16 @@ import net.minecraft.util.Identifier;
 public class ShaderRender extends Module {
 
 	// 1.21.11 removed most of the old "Super Secret Settings" post-effect shaders from the vanilla
-	// jar - only these 4 of the original 24 modes still ship as real assets/minecraft/post_effect/
-	// json files. The rest (Notch/FXAA/Art/Bumpy/Blobs/Blobs2/Pencil/Vibrant/Deconverge/Flip/NTSC/
-	// Outline/Phosphor/Scanline/Sobel/Bits/Desaturate/Green/Wobble/Antialias) have no vanilla GLSL/
-	// JSON asset left to reference at all any more; recreating them means re-authoring ~20 post-effect
-	// chains from scratch against the new pipeline. Settings stay identical to 1.19.4 so saved configs
-	// don't break; picking a removed mode just leaves the world unshaded instead of crashing.
-	private static final Set<String> STILL_AVAILABLE = Set.of("invert", "blur", "creeper", "spider");
+	// jar - Invert/Blur/Creeper/Spider are the only 4 of the original 24 modes that still ship as
+	// real assets/minecraft/post_effect/json files. The rest have been ported from Minecraft
+	// 1.19.4's own (Mojang) GLSL/JSON assets against the new post-effect pipeline - see
+	// src/main/resources/assets/bleachhack/{post_effect,shaders/post}. Art/Flip/NTSC/Outline/
+	// Phosphor are still missing (multi-pass chains with frame-feedback targets or a custom vertex
+	// shader - not ported yet); picking one of those just leaves the world unshaded instead of
+	// crashing. Settings stay identical to 1.19.4 so saved configs don't break.
+	private static final Set<String> VANILLA_STILL_AVAILABLE = Set.of("invert", "blur", "creeper", "spider");
+	private static final Set<String> PORTED = Set.of("notch", "fxaa", "bumpy", "blobs", "blobs2", "pencil", "vibrant",
+			"deconverge", "scanline", "sobel", "bits", "desaturate", "green", "wobble", "antialias");
 
 	private String lastMode = null;
 	private PostEffectProcessor lastShader = null;
@@ -54,8 +58,10 @@ public class ShaderRender extends Module {
 				lastShader = null;
 			}
 
-			if (STILL_AVAILABLE.contains(mode)) {
-				lastShader = mc.getShaderLoader().loadPostEffect(Identifier.of("minecraft", mode), Set.of());
+			if (VANILLA_STILL_AVAILABLE.contains(mode)) {
+				lastShader = mc.getShaderLoader().loadPostEffect(Identifier.of("minecraft", mode), DefaultFramebufferSet.MAIN_ONLY);
+			} else if (PORTED.contains(mode)) {
+				lastShader = mc.getShaderLoader().loadPostEffect(Identifier.of("bleachhack", mode), DefaultFramebufferSet.MAIN_ONLY);
 			}
 		}
 
