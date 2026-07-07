@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.bleachhack.gui.clickgui.ModuleClickGuiScreen;
 import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleManager;
 import org.bleachhack.module.mods.ClickGui;
@@ -58,8 +59,11 @@ public class ModuleWindow extends ClickGuiWindow {
 		x2 = x + len + 1;
 
 		int contentHeight = getHeight();
-		// leave a small margin so the window never quite touches the bottom of the screen
-		int visibleHeight = hiding ? 0 : Math.min(contentHeight, Math.max(12, mc.getWindow().getScaledHeight() - y - 4));
+		// leave a small margin so the window never quite touches the bottom of the screen; the
+		// clickgui's own content scale (ModuleClickGuiScreen's "Scale" setting) shrinks/grows how
+		// many real screen pixels one virtual (content-space) pixel covers
+		int screenHeight = (int) (mc.getWindow().getScaledHeight() / ModuleClickGuiScreen.INSTANCE.getScale());
+		int visibleHeight = hiding ? 0 : Math.min(contentHeight, Math.max(12, screenHeight - y - 4));
 		y2 = hiding ? y1 + 13 : y1 + 13 + visibleHeight;
 
 		boolean scrollable = !hiding && contentHeight > visibleHeight;

@@ -53,16 +53,33 @@ public abstract class ClickGuiScreen extends WindowScreen {
 		return false;
 	}
 
+	// Overridden by ModuleClickGuiScreen to make the "Scale" setting apply; the UI clickgui
+	// leaves this at 1 (unchanged behavior). Only the window/content area is scaled - the
+	// Modules/UI switcher bar below always draws and hit-tests in real screen pixels.
+	public float getScale() {
+		return 1f;
+	}
+
 	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
 		// Screen.renderWithTooltip() now calls renderBackground() once itself before render() runs
 		// (1.21.11) - calling it again here throws "Can only blur once per frame".
+		float scale = getScale();
+		int vMouseX = (int) (mouseX / scale);
+		int vMouseY = (int) (mouseY / scale);
+		int vWidth = (int) (width / scale);
+
 		for (Window w : getWindows()) {
 			if (w instanceof ClickGuiWindow) {
-				((ClickGuiWindow) w).updateKeys(mouseX, mouseY, keyDown, lmDown, rmDown, lmHeld, mwScroll);
+				((ClickGuiWindow) w).updateKeys(vMouseX, vMouseY, keyDown, lmDown, rmDown, lmHeld, mwScroll);
 			}
 		}
 
-		super.render(matrices, mouseX, mouseY, delta);
+		if (scale != 1f) {
+			matrices.getMatrices().pushMatrix();
+			matrices.getMatrices().scale(scale, scale);
+		}
+
+		super.render(matrices, vMouseX, vMouseY, delta);
 
 		for (Window w : getWindows()) {
 			if (w instanceof ClickGuiWindow) {
@@ -96,7 +113,7 @@ public abstract class ClickGuiScreen extends WindowScreen {
 					// Flip the tooltip to the left of its anchor point instead of letting it run off the
 					// right edge of the screen (tooltip.x is normally just right of the setting row).
 					int boxX = tooltip.x;
-					if (boxX + maxLineWidth + 3 > width) {
+					if (boxX + maxLineWidth + 3 > vWidth) {
 						boxX = Math.max(0, tooltip.x - maxLineWidth - 9);
 					}
 
@@ -115,6 +132,10 @@ public abstract class ClickGuiScreen extends WindowScreen {
 					}
 				}
 			}
+		}
+
+		if (scale != 1f) {
+			matrices.getMatrices().popMatrix();
 		}
 
 		Window.fill(matrices, width / 2 - 50, -1, width / 2 - 2, 12,
@@ -157,13 +178,20 @@ public abstract class ClickGuiScreen extends WindowScreen {
 			rmDown = true;
 		}
 
-		return super.mouseClicked(click, doubleClick);
+		return super.mouseClicked(scaleClick(click), doubleClick);
 	}
 
 	public boolean mouseReleased(Click click) {
 		if (click.button() == 0)
 			lmHeld = false;
-		return super.mouseReleased(click);
+		return super.mouseReleased(scaleClick(click));
+	}
+
+	// Windows are laid out/hit-tested in unscaled ("virtual") coordinates - convert real clicks
+	// into that space so hit-testing lines up with what render() draws under getScale().
+	private Click scaleClick(Click click) {
+		float scale = getScale();
+		return scale == 1f ? click : new Click(click.x() / scale, click.y() / scale, click.buttonInfo());
 	}
 
 	public boolean keyPressed(KeyInput input) {

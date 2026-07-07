@@ -50,6 +50,11 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 		addDrawableChild(searchField);
 	}
 
+	@Override
+	public float getScale() {
+		return ModuleManager.getModule(ClickGui.class).getSetting(3).asSlider().getValueInt() / 100f;
+	}
+
 	public void initWindows() {
 		int len = ModuleManager.getModule(ClickGui.class).getSetting(0).asSlider().getValueInt();
 		
