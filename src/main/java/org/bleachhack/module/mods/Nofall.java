@@ -8,6 +8,7 @@
  */
 package org.bleachhack.module.mods;
 
+import org.bleachhack.event.events.EventPacket;
 import org.bleachhack.event.events.EventTick;
 import org.bleachhack.eventbus.BleachSubscribe;
 import org.bleachhack.module.Module;
@@ -21,7 +22,16 @@ public class Nofall extends Module {
 
 	public Nofall() {
 		super("Nofall", KEY_UNBOUND, ModuleCategory.PLAYER, "Prevents you from taking fall damage.",
-				new SettingMode("Mode", "Simple", "Packet").withDesc("What Nofall mode to use."));
+				new SettingMode("Mode", "Simple", "Packet", "NoGround").withDesc(
+						"What Nofall mode to use. NoGround never reports being on the ground to the server "
+						+ "(client-side movement/jumping is unaffected), so it never sees you land."));
+	}
+
+	@BleachSubscribe
+	public void onSendPacket(EventPacket.Send event) {
+		if (getSetting(0).asMode().getMode() == 2 && event.getPacket() instanceof PlayerMoveC2SPacket packet) {
+			packet.onGround = false;
+		}
 	}
 
 	@BleachSubscribe
