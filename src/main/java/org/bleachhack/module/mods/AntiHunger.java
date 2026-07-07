@@ -9,28 +9,70 @@
 package org.bleachhack.module.mods;
 
 import org.bleachhack.event.events.EventPacket;
+import org.bleachhack.event.events.EventSendMovementPackets;
 import org.bleachhack.eventbus.BleachSubscribe;
 import org.bleachhack.module.Module;
 import org.bleachhack.module.ModuleCategory;
+import org.bleachhack.setting.module.SettingMode;
 import org.bleachhack.setting.module.SettingToggle;
 
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 
 public class AntiHunger extends Module {
 
+	// legacy (pre-1.21.11 BleachHack) implementation state
 	private boolean bool = false;
+
+	// meteor-style implementation state
+	private boolean lastOnGround = false;
+	private boolean ignorePacket = false;
 
 	public AntiHunger() {
 		super("AntiHunger", KEY_UNBOUND, ModuleCategory.PLAYER, "Minimizes the amount of hunger you use (Also makes you slide).",
-				new SettingToggle("Relaxed", false).withDesc("Only activates every other ticks, might fix getting fly kicked."));
+				new SettingMode("Implementation", "Legacy", "Meteor").withDesc("Which anti hunger algorithm to use."),
+				new SettingToggle("Relaxed", false).withDesc("Legacy only: only activates every other tick, might fix getting fly kicked."),
+				new SettingToggle("Sprint Spoof", true).withDesc("Meteor only: cancels sprint start packets."),
+				new SettingToggle("OnGround Spoof", true).withDesc("Meteor only: spoofs the onGround flag while standing still on the ground."));
+	}
+
+	@Override
+	public void onEnable(boolean inWorld) {
+		super.onEnable(inWorld);
+		bool = false;
+		ignorePacket = false;
+
+		if (inWorld) {
+			lastOnGround = mc.player.isOnGround();
+		}
+	}
+
+	@BleachSubscribe
+	public void onSendMovementPackets(EventSendMovementPackets event) {
+		if (getSetting(0).asMode().getMode() != 1) {
+			return;
+		}
+
+		if (mc.player.isOnGround() && !lastOnGround && getSetting(3).asToggle().getState()) {
+			// let one real packet through so landing still registers (keeps fall damage working)
+			ignorePacket = true;
+		}
+
+		lastOnGround = mc.player.isOnGround();
 	}
 
 	@BleachSubscribe
 	public void onSendPacket(EventPacket.Send event) {
+		if (getSetting(0).asMode().getMode() == 1) {
+			onMeteorPacket(event);
+		} else {
+			onLegacyPacket(event);
+		}
+	}
+
+	private void onLegacyPacket(EventPacket.Send event) {
 		if (event.getPacket() instanceof PlayerMoveC2SPacket) {
-			if (mc.player.getVelocity().y != 0 && !mc.options.jumpKey.isPressed() && (!bool || !getSetting(0).asToggle().getState())) {
-				// if (((PlayerMoveC2SPacket) event.getPacket()).isOnGround())
-				// event.setCancelled(true);
+			if (mc.player.getVelocity().y != 0 && !mc.options.jumpKey.isPressed() && (!bool || !getSetting(1).asToggle().getState())) {
 				boolean onGround = mc.player.fallDistance >= 0.1f;
 				mc.player.setOnGround(onGround);
 				((PlayerMoveC2SPacket) event.getPacket()).onGround = onGround;
@@ -38,6 +80,28 @@ public class AntiHunger extends Module {
 			} else {
 				bool = false;
 			}
+		}
+	}
+
+	private void onMeteorPacket(EventPacket.Send event) {
+		if (ignorePacket && event.getPacket() instanceof PlayerMoveC2SPacket) {
+			ignorePacket = false;
+			return;
+		}
+
+		if (mc.player.hasVehicle() || mc.player.isTouchingWater() || mc.player.isSubmergedInWater()) {
+			return;
+		}
+
+		if (event.getPacket() instanceof ClientCommandC2SPacket packet && getSetting(2).asToggle().getState()) {
+			if (packet.getMode() == ClientCommandC2SPacket.Mode.START_SPRINTING) {
+				event.setCancelled(true);
+			}
+		}
+
+		if (event.getPacket() instanceof PlayerMoveC2SPacket packet && getSetting(3).asToggle().getState()
+				&& mc.player.isOnGround() && mc.player.fallDistance <= 0.0 && !mc.interactionManager.isBreakingBlock()) {
+			packet.onGround = false;
 		}
 	}
 
