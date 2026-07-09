@@ -161,9 +161,15 @@ public class CmdModuleSettings extends Command {
 		}
 	}
 
+	// Chat commands split on spaces, so a setting/value name with a space in it (e.g. "XP Bottles")
+	// can never be typed as-is - accept it dash-separated instead ("xp-bottles") on top of the real name.
+	private static boolean sameName(String actual, String typed) {
+		return actual.equalsIgnoreCase(typed) || actual.replace(' ', '-').equalsIgnoreCase(typed);
+	}
+
 	private static ModuleSetting<?> findSetting(List<ModuleSetting<?>> settings, String name) {
 		for (ModuleSetting<?> setting : settings) {
-			if (setting.getName().equalsIgnoreCase(name)) {
+			if (sameName(setting.getName(), name)) {
 				return setting;
 			}
 
@@ -195,7 +201,7 @@ public class CmdModuleSettings extends Command {
 
 		if (setting instanceof SettingMode mode) {
 			for (int i = 0; i < mode.modes.length; i++) {
-				if (mode.modes[i].equalsIgnoreCase(value)) {
+				if (sameName(mode.modes[i], value)) {
 					mode.setValue(i);
 					return mode.modes[i];
 				}
