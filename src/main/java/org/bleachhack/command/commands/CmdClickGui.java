@@ -23,7 +23,7 @@ import org.bleachhack.util.io.BleachFileHelper;
 public class CmdClickGui extends Command {
 
 	public CmdClickGui() {
-		super("clickgui", "Modify the clickgui windows.", "clickgui reset [open/closed] | clickgui length <length>", CommandCategory.MODULES);
+		super("clickgui", "Modify the clickgui windows, or change any other setting by name (e.g. \"$clickgui scale 150\").", "clickgui reset [open/closed] | clickgui length <length> | clickgui <setting> <value>", CommandCategory.MODULES);
 	}
 
 	@Override
@@ -71,7 +71,9 @@ public class CmdClickGui extends Command {
 
 			BleachLogger.info("Set the clickgui length to: " + args[1]);
 		} else {
-			throw new CmdSyntaxException();
+			// "reset" and "length" above are this command's own subcommands, anything else falls
+			// through to the generic module-settings handler (e.g. "clickgui scale 150").
+			CmdModuleSettings.applyArgs(ModuleManager.getModule(ClickGui.class), args);
 		}
 	}
 

@@ -10,7 +10,6 @@
 	"CmdEntityMenu",
 	"CmdEntityStats",
 	"CmdFriends",
-	"CmdModuleSettings",
 	"CmdGamemode",
 	"CmdGive",
 	"CmdHelp",
@@ -29,6 +28,7 @@
 	"CmdSpammer",
 	"CmdTerrain",
 	"CmdToggle",
-	"CmdWatermark"
+	"CmdWatermark",
+	"CmdModuleSettings"
   ]
 }

@@ -22,12 +22,18 @@ import org.bleachhack.util.collections.MutablePairList;
 public class CmdEntityMenu extends Command {
 
 	public CmdEntityMenu() {
-		super("entitymenu", "Opens the gui to manage the things which appear on the entitymenu interaction screen.", "entitymenu", CommandCategory.MODULES,
+		super("entitymenu", "Opens the gui to manage the things which appear on the entitymenu interaction screen, or change a setting (e.g. \"$entitymenu playersonly true\", \"$entitymenu reset\").",
+				"entitymenu | entitymenu reset | entitymenu <setting> <value>", CommandCategory.MODULES,
 				"playermenu", "interactionmenu");
 	}
 
 	@Override
 	public void onCommand(String alias, String[] args) throws Exception {
+		if (args.length > 0) {
+			CmdModuleSettings.applyArgs(ModuleManager.getModule(EntityMenu.class), args);
+			return;
+		}
+
 		MutablePairList<String, String> interactions = ModuleManager.getModule(EntityMenu.class).interactions;
 
 		BleachQueue.add(() -> mc.setScreen(new EntityMenuEditScreen(interactions)));

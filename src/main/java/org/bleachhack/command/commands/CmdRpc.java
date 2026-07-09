@@ -22,7 +22,7 @@ import com.google.gson.JsonPrimitive;
 public class CmdRpc extends Command {
 
 	public CmdRpc() {
-		super("rpc", "Sets custom discord rpc text.", "rpc [top/bottom] <text> | rpc current", CommandCategory.MODULES,
+		super("rpc", "Sets custom discord rpc text, or change a setting (e.g. \"$rpc silent true\", \"$rpc reset\").", "rpc [top/bottom] <text> | rpc current | rpc reset | rpc <setting> <value>", CommandCategory.MODULES,
 				"discordrpc");
 	}
 
@@ -33,22 +33,25 @@ public class CmdRpc extends Command {
 		}
 
 		DiscordRPC rpc = ModuleManager.getModule(DiscordRPC.class);
-		String text = StringUtils.join(args, ' ', 1, args.length);
 
-		if (args[0].equalsIgnoreCase("top")) {
-			rpc.setTopText(text);
+		if (args[0].equalsIgnoreCase("top") || args[0].equalsIgnoreCase("bottom")) {
+			String text = StringUtils.join(args, ' ', 1, args.length);
 
-			BleachLogger.info("Set top RPC text to \"" + text + "\"");
-			BleachFileHelper.saveMiscSetting("discordRPCTopText", new JsonPrimitive(text));
-		} else if (args[0].equalsIgnoreCase("bottom")) {
-			rpc.setBottomText(text);
+			if (args[0].equalsIgnoreCase("top")) {
+				rpc.setTopText(text);
 
-			BleachLogger.info("Set bottom RPC text to \"" + text + "\"");
-			BleachFileHelper.saveMiscSetting("discordRPCBottomText", new JsonPrimitive(text));
+				BleachLogger.info("Set top RPC text to \"" + text + "\"");
+				BleachFileHelper.saveMiscSetting("discordRPCTopText", new JsonPrimitive(text));
+			} else {
+				rpc.setBottomText(text);
+
+				BleachLogger.info("Set bottom RPC text to \"" + text + "\"");
+				BleachFileHelper.saveMiscSetting("discordRPCBottomText", new JsonPrimitive(text));
+			}
 		} else if (args[0].equalsIgnoreCase("current")) {
 			BleachLogger.info("Current RPC status:\n" + rpc.getTopText() + "\n" + rpc.getBottomText());
 		} else {
-			throw new CmdSyntaxException();
+			CmdModuleSettings.applyArgs(rpc, args);
 		}
 	}
 

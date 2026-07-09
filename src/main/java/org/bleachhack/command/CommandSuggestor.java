@@ -3,6 +3,7 @@ package org.bleachhack.command;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import org.bleachhack.BleachHack;
 import org.bleachhack.event.events.EventKeyPress;
@@ -17,6 +18,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.network.PlayerListEntry;
 
 public class CommandSuggestor {
 
@@ -60,7 +62,9 @@ public class CommandSuggestor {
 				curText = text;
 
 				if (text.startsWith(Command.getPrefix())) {
-					suggestions.addAll(CommandManager.getSuggestionProvider().getSuggestions(text.substring(Command.getPrefix().length()).split(" ", -1)));
+					String[] typed = text.substring(Command.getPrefix().length()).split(" ", -1);
+					suggestions.addAll(CommandManager.getSuggestionProvider().getSuggestions(typed));
+					addOnlinePlayerSuggestions(typed);
 				}
 
 				selected = 0;
@@ -129,6 +133,28 @@ public class CommandSuggestor {
 				&& (event.getKey() == GLFW.GLFW_KEY_TAB || event.getKey() == GLFW.GLFW_KEY_UP || event.getKey() == GLFW.GLFW_KEY_DOWN)) {
 			event.setCancelled(true);
 		}
+	}
+
+	// "$friends add <user>"/"$friend add <user>" - CommandSuggestionProvider only knows the
+	// "<user>" placeholder from the syntax string, so swap it for real, currently-online names.
+	private void addOnlinePlayerSuggestions(String[] typed) {
+		if (typed.length != 3 || !typed[1].equalsIgnoreCase("add")
+				|| !(typed[0].equalsIgnoreCase("friends") || typed[0].equalsIgnoreCase("friend"))
+				|| MinecraftClient.getInstance().getNetworkHandler() == null) {
+			return;
+		}
+
+		suggestions.removeIf(s -> s.matches("^<.*>$"));
+
+		String prefix = typed[2].toLowerCase(Locale.ENGLISH);
+		for (PlayerListEntry entry : MinecraftClient.getInstance().getNetworkHandler().getPlayerList()) {
+			String name = entry.getProfile().name();
+			if (name.toLowerCase(Locale.ENGLISH).startsWith(prefix)) {
+				suggestions.add(name);
+			}
+		}
+
+		suggestions.sort(String.CASE_INSENSITIVE_ORDER);
 	}
 
 	private void updateScroll() {

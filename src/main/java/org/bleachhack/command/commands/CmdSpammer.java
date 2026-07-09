@@ -10,6 +10,7 @@ package org.bleachhack.command.commands;
 
 import org.bleachhack.command.Command;
 import org.bleachhack.command.CommandCategory;
+import org.bleachhack.module.ModuleManager;
 import org.bleachhack.util.BleachLogger;
 import org.bleachhack.util.io.BleachFileMang;
 
@@ -18,16 +19,21 @@ import net.minecraft.util.Util;
 public class CmdSpammer extends Command {
 
 	public CmdSpammer() {
-		super("spammer", "Opens the spammer file.", "spammer", CommandCategory.MODULES,
+		super("spammer", "Opens the spammer file, or change a setting (e.g. \"$spammer delay 5\", \"$spammer reset\").", "spammer | spammer reset | spammer <setting> <value>", CommandCategory.MODULES,
 				"editspammer");
 	}
 
 	@Override
 	public void onCommand(String alias, String[] args) throws Exception {
-		BleachFileMang.createFile("spammer.txt");
-		Util.getOperatingSystem().open(BleachFileMang.getDir().resolve("spammer.txt").toUri());
+		if (args.length == 0) {
+			BleachFileMang.createFile("spammer.txt");
+			Util.getOperatingSystem().open(BleachFileMang.getDir().resolve("spammer.txt").toUri());
 
-		BleachLogger.info("Opened spammer file.");
+			BleachLogger.info("Opened spammer file.");
+			return;
+		}
+
+		CmdModuleSettings.applyArgs(ModuleManager.getModule("Spammer"), args);
 	}
 
 }

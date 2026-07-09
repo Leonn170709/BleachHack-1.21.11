@@ -19,6 +19,7 @@ import net.minecraft.screen.ShulkerBoxScreenHandler;
 import net.minecraft.text.Text;
 import org.bleachhack.command.Command;
 import org.bleachhack.command.CommandCategory;
+import org.bleachhack.module.ModuleManager;
 import org.bleachhack.util.BleachLogger;
 import org.bleachhack.util.BleachQueue;
 import org.bleachhack.util.ItemContentUtils;
@@ -28,11 +29,16 @@ import java.util.List;
 public class CmdPeek extends Command {
 
 	public CmdPeek() {
-		super("peek", "Shows whats inside the container you're holder.", "peek", CommandCategory.MISC);
+		super("peek", "Shows whats inside the container you're holder, or change a setting on the Peek module (e.g. \"$peek books false\", \"$peek reset\").", "peek | peek reset | peek <setting> <value>", CommandCategory.MISC);
 	}
 
 	@Override
 	public void onCommand(String alias, String[] args) throws Exception {
+		if (args.length > 0) {
+			CmdModuleSettings.applyArgs(ModuleManager.getModule("Peek"), args);
+			return;
+		}
+
 		ItemStack item = mc.player.getMainHandStack();
 
 		if (item.getItem() instanceof BlockItem) {
