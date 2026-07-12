@@ -39,6 +39,11 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 
 	private TextFieldWidget searchField;
 
+	// True while the search bar is only open because Ctrl+F opened it, i.e. the "Search bar" setting
+	// itself is off. It gets closed again as soon as the search is over (field loses focus / gui
+	// closes) instead of staying open, which would silently flip the setting on.
+	private boolean temporarySearch;
+
 	public ModuleClickGuiScreen() {
 		super(Text.literal("ClickGui"));
 	}
@@ -56,13 +61,44 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 	@Override
 	public boolean keyPressed(KeyInput input) {
 		if (input.key() == GLFW.GLFW_KEY_F && (input.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0) {
+			// Ctrl+F always means "let me search", never "hide the search bar" - so show it if it's
+			// hidden and jump straight into typing either way. Focus has to be set on the screen
+			// (not just the widget) or charTyped() is never routed to the field and typing is eaten.
 			SettingToggle searchBar = ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle();
-			searchBar.setValue(!searchBar.getState());
-			searchField.setFocused(searchBar.getState());
+			if (!searchBar.getState()) {
+				searchBar.setValue(true);
+				temporarySearch = true;
+			}
+
+			searchField.visible = true;
+			setFocused(searchField);
+			searchField.setFocused(true);
 			return true;
 		}
 
 		return super.keyPressed(input);
+	}
+
+	private void endTemporarySearch() {
+		temporarySearch = false;
+		searchField.setText("");
+		searchField.visible = false;
+		ModuleManager.getModule(ClickGui.class).getSetting(1).asToggle().setValue(false);
+
+		for (Window w : getWindows()) {
+			if (w instanceof ModuleWindow) {
+				((ModuleWindow) w).setSearchedModule(new HashSet<>());
+			}
+		}
+	}
+
+	@Override
+	public void removed() {
+		if (temporarySearch) {
+			endTemporarySearch();
+		}
+
+		super.removed();
 	}
 
 	@Override
@@ -116,6 +152,12 @@ public class ModuleClickGuiScreen extends ClickGuiScreen {
 	public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
 		BleachFileHelper.SCHEDULE_SAVE_CLICKGUI.set(true);
 		ClickGui clickGui = ModuleManager.getModule(ClickGui.class);
+
+		// Clicking anything else (a module, a window) unfocuses the field - that's the search being
+		// over, so a Ctrl+F-opened bar goes away again.
+		if (temporarySearch && !searchField.isFocused()) {
+			endTemporarySearch();
+		}
 
 		searchField.visible = clickGui.getSetting(1).asToggle().getState();
 

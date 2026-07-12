@@ -83,12 +83,38 @@ public class CmdModuleSettings extends Command {
 				continue;
 			}
 
-			if (sb.length() > 0) {
-				sb.append(" | ");
-			}
-			sb.append(name).append(" reset | ").append(name).append(" <setting> <value>");
+			sb.append(sb.length() > 0 ? " | " : "").append(name).append(" reset");
+			appendSettingSyntax(sb, name, m.getSettings());
 		}
 		return sb.toString();
+	}
+
+	// One branch per settable setting, so tab-complete offers the actual names ("$sneak Mode")
+	// instead of a "<setting>" placeholder. Values only get suggested where the set of valid ones is
+	// known - modes and toggles become [a/b/c] alternatives, sliders stay a free <value> since any
+	// number in range goes. Setting types applyValue() can't handle are left out entirely.
+	public static void appendSettingSyntax(StringBuilder sb, String prefix, List<ModuleSetting<?>> settings) {
+		for (ModuleSetting<?> setting : settings) {
+			String name = dashed(setting.getName());
+
+			if (setting instanceof SettingToggle toggle) {
+				sb.append(" | ").append(prefix).append(' ').append(name).append(" [on/off]");
+				appendSettingSyntax(sb, prefix, toggle.getChildren());
+			} else if (setting instanceof SettingMode mode) {
+				sb.append(" | ").append(prefix).append(' ').append(name).append(" [");
+				for (int i = 0; i < mode.modes.length; i++) {
+					sb.append(i > 0 ? "/" : "").append(dashed(mode.modes[i]));
+				}
+				sb.append(']');
+			} else if (setting instanceof SettingSlider) {
+				sb.append(" | ").append(prefix).append(' ').append(name).append(" <value>");
+			}
+		}
+	}
+
+	// The suggestion tree splits on spaces, and so does the command parser - see sameName().
+	private static String dashed(String name) {
+		return name.replace(' ', '-');
 	}
 
 	@Override

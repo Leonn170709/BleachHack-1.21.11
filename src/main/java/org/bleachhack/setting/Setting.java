@@ -1,5 +1,6 @@
 package org.bleachhack.setting;
 
+import java.util.Objects;
 import java.util.function.UnaryOperator;
 
 import com.google.gson.JsonElement;
@@ -55,7 +56,8 @@ public abstract class Setting<T> {
 	}
 
 	public boolean isDefault() {
-		return getValue().equals(defaultValue);
+		// SettingButton is a Setting<Void> with a null value, so this has to be null-safe.
+		return Objects.equals(getValue(), defaultValue);
 	}
 	
 	public JsonElement write() {

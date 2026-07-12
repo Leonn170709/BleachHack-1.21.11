@@ -50,12 +50,26 @@ public class BleachFileHelper {
 			savingExecutor = MoreExecutors.getExitingScheduledExecutorService(new ScheduledThreadPoolExecutor(1));
 
 		savingExecutor.scheduleAtFixedRate(() -> {
-			if (SCHEDULE_SAVE_MODULES.getAndSet(false)) saveModules();
-			if (SCHEDULE_SAVE_OPTIONS.getAndSet(false)) saveOptions();
-			if (SCHEDULE_SAVE_CLICKGUI.getAndSet(false)) saveClickGui();
-			if (SCHEDULE_SAVE_FRIENDS.getAndSet(false)) saveFriends();
-			if (SCHEDULE_SAVE_UI.getAndSet(false)) saveUI();
+			// scheduleAtFixedRate silently cancels the task forever if the runnable throws, which
+			// would stop *all* saving for the rest of the session with nothing in the log. Guard
+			// each save so one broken one can't take the others down with it.
+			trySave(SCHEDULE_SAVE_MODULES, BleachFileHelper::saveModules, "modules");
+			trySave(SCHEDULE_SAVE_OPTIONS, BleachFileHelper::saveOptions, "options");
+			trySave(SCHEDULE_SAVE_CLICKGUI, BleachFileHelper::saveClickGui, "clickgui");
+			trySave(SCHEDULE_SAVE_FRIENDS, BleachFileHelper::saveFriends, "friends");
+			trySave(SCHEDULE_SAVE_UI, BleachFileHelper::saveUI, "ui");
 		}, 0, 5, TimeUnit.SECONDS);
+	}
+
+	private static void trySave(AtomicBoolean flag, Runnable save, String name) {
+		if (!flag.getAndSet(false))
+			return;
+
+		try {
+			save.run();
+		} catch (Throwable t) {
+			BleachLogger.logger.error("Error saving " + name + "!", t);
+		}
 	}
 
 	public static void stopSavingExecutor() {
