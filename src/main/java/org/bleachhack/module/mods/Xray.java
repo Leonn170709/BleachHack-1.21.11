@@ -8,7 +8,7 @@
  */
 package org.bleachhack.module.mods;
 
-import net.minecraft.entity.mob.MobEntity;
+import net.fabricmc.loader.api.FabricLoader;
 import org.bleachhack.event.events.EventLightTex;
 import org.bleachhack.event.events.EventRenderBlock;
 import org.bleachhack.event.events.EventRenderFluid;
@@ -22,6 +22,7 @@ import org.bleachhack.setting.module.SettingToggle;
 import org.bleachhack.util.world.WorldUtils;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.ShortPlantBlock;
 import net.minecraft.block.TallPlantBlock;
@@ -29,6 +30,21 @@ import net.minecraft.client.render.BlockRenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 
 public class Xray extends Module {
+
+	/*
+	 * Sodium replaces vanilla's entire chunk-meshing path, so MixinChunkRebuildTask - and with it the
+	 * Tesselate/ShouldDrawSide hooks Xray used to hide terrain - never runs. These flags drive three
+	 * renderer-agnostic BlockState hooks in MixinAbstractBlockState instead (invisible render type,
+	 * empty culling face, non-opaque-full-cube), which vanilla and Sodium both consult.
+	 *
+	 * Sodium exposes no way to swap the vertex consumer, so Opacity can't work there - blocks are
+	 * hidden outright instead. Fluids also can't be cancelled under Sodium; the "Fluids" setting is
+	 * vanilla-only.
+	 */
+	private static final boolean SODIUM = FabricLoader.getInstance().isModLoaded("sodium");
+
+	private static Xray instance;
+	private static boolean hiding;
 
 	private double gamma;
 
@@ -62,11 +78,20 @@ public class Xray extends Module {
 						Blocks.EMERALD_BLOCK,
 						Blocks.NETHER_GOLD_ORE,
 						Blocks.ANCIENT_DEBRIS).withDesc("Edit the xray blocks."));
+
+		instance = this;
+	}
+
+	/** True while the block should produce no geometry at all (hot path - keep the flag check first). */
+	public static boolean isHidden(BlockState state) {
+		return hiding && !instance.getSetting(2).asList(Block.class).contains(state.getBlock());
 	}
 
 	@Override
 	public void onEnable(boolean inWorld) {
 		super.onEnable(inWorld);
+
+		hiding = SODIUM || !getSetting(1).asToggle().getState();
 
 		mc.chunkCullingEnabled = false;
 		mc.worldRenderer.reload();
@@ -78,10 +103,16 @@ public class Xray extends Module {
 	public void onDisable(boolean inWorld) {
 		mc.options.getGamma().setValue(gamma);
 
+		hiding = false;
 		mc.chunkCullingEnabled = true;
 		mc.worldRenderer.reload();
 
 		super.onDisable(inWorld);
+	}
+
+	@BleachSubscribe
+	public void onTick(EventTick event) {
+		hiding = SODIUM || !getSetting(1).asToggle().getState();
 	}
 
 	@BleachSubscribe
